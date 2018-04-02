@@ -4,7 +4,7 @@
 
 import time
 import krpc
-conn = krpc.connect(name='Hello World')
+conn = krpc.connect(name='RemoteAutoPilot')
 
 vessel = conn.space_center.active_vessel
 
