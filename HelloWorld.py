@@ -35,6 +35,12 @@ with event.condition:
     event.wait()
 print('MECO')
 
+vessel.auto_pilot.disengage()
+vessel.auto_pilot.sas = True
+time.sleep(0.1)
+vessel.auto_pilot.sas_mode = vessel.auto_pilot.sas_mode.prograde
+print('Setting SAS to point prograde')
+
 srf_altitude = conn.get_call(getattr, vessel.flight(), 'surface_altitude')
 expr = conn.krpc.Expression.less_than(
     conn.krpc.Expression.call(srf_altitude),
@@ -43,6 +49,7 @@ event = conn.krpc.add_event(expr)
 with event.condition:
     event.wait()
 
+vessel.auto_pilot.sas = False
 vessel.control.activate_next_stage()
 print('Deploying chutes')
 
