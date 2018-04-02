@@ -68,7 +68,31 @@ event = conn.krpc.add_event(expr)
 with event.condition:
     event.wait()
 vessel.control.throttle = 0
+print('Coasting to apoapsis')
+
+# waiting until 30 seconds before apoapsis before circularizing
+time_to_apoapsis = conn.get_call(getattr, vessel.orbit, 'time_to_apoapsis')
+expr = conn.krpc.Expression.less_than(
+    conn.krpc.Expression.call(time_to_apoapsis),
+    conn.krpc.Expression.constant_double(30))
+event = conn.krpc.add_event(expr)
+with event.condition:
+    event.wait()
+vessel.control.throttle = 1
+print('Initiating circularization burn')
+
+# implement automatic staging between stage 2 and stage 3
+print('Please stage manually')
+
+# stop circularization burn
+periapsis_altitude = conn.get_call(getattr, vessel.orbit, 'periapsis_altitude')
+expr = conn.krpc.Expression.greater_than(
+    conn.krpc.Expression.call(periapsis_altitude),
+    conn.krpc.Expression.constant_double(target_apoapsis))
+event = conn.krpc.add_event(expr)
+with event.condition:
+    event.wait()
+vessel.control.throttle = 0
 print('MECO')
 
 print('Autopilot releasing control')
-print('Please circularize manually')
