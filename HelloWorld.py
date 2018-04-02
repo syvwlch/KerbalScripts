@@ -1,5 +1,5 @@
 # This is intendend for a simple rocket
-# with a non-detachable SRB & a chute
+# with a non-detachable RT-5 SRB & a chute
 
 import time
 import krpc
