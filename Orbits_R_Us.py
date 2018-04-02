@@ -11,6 +11,7 @@ vessel = conn.space_center.active_vessel
 # setting up variables
 SRB_pitch = 85
 target_apoapsis = 80000
+burn_time_to_apoapsis = 30
 
 # setting up streams
 
@@ -70,11 +71,11 @@ with event.condition:
 vessel.control.throttle = 0
 print('Coasting to apoapsis')
 
-# waiting until 30 seconds before apoapsis before circularizing
+# waiting before starting circularization burn
 time_to_apoapsis = conn.get_call(getattr, vessel.orbit, 'time_to_apoapsis')
 expr = conn.krpc.Expression.less_than(
     conn.krpc.Expression.call(time_to_apoapsis),
-    conn.krpc.Expression.constant_double(30))
+    conn.krpc.Expression.constant_double(burn_time_to_apoapsis))
 event = conn.krpc.add_event(expr)
 with event.condition:
     event.wait()
@@ -95,4 +96,6 @@ with event.condition:
 vessel.control.throttle = 0
 print('MECO')
 
+# handing control back
+vessel.auto_pilot.sas = False
 print('Autopilot releasing control')
