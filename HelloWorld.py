@@ -27,7 +27,7 @@ print('MECO')
 srf_altitude = conn.get_call(getattr, vessel.flight(), 'surface_altitude')
 expr = conn.krpc.Expression.less_than(
     conn.krpc.Expression.call(srf_altitude),
-    conn.krpc.Expression.constant_double(1000))
+    conn.krpc.Expression.constant_double(3000))
 event = conn.krpc.add_event(expr)
 with event.condition:
     event.wait()
