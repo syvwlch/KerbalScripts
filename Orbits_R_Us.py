@@ -2,6 +2,9 @@
 # Orbits 'R Us four-seat tourist ferry
 # up into a nice clean orbit
 
+# Changes made to rocket for this script to work:
+# 1. Disabled roll control on the first stage fins, to reduce oscillations
+
 import time
 import krpc
 conn = krpc.connect(name='RemoteAutoPilot')
