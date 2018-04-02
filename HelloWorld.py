@@ -12,8 +12,19 @@ vessel.auto_pilot.engage()
 vessel.control.throttle = 1
 time.sleep(1)
 
-print('Launch')
 vessel.control.activate_next_stage()
+print('Launch')
+
+mean_altitude = conn.get_call(getattr, vessel.flight(), 'mean_altitude')
+expr = conn.krpc.Expression.greater_than(
+    conn.krpc.Expression.call(mean_altitude),
+    conn.krpc.Expression.constant_double(1000))
+event = conn.krpc.add_event(expr)
+with event.condition:
+    event.wait()
+
+vessel.auto_pilot.target_pitch_and_heading(60, 90)
+print('Initiating turn')
 
 fuel_amount = conn.get_call(vessel.resources.amount, 'SolidFuel')
 expr = conn.krpc.Expression.less_than(
