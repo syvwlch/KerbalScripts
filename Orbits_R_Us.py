@@ -23,11 +23,16 @@ rect = panel.rect_transform
 rect.size = (400, 100)
 rect.position = (210-(screen_size[0]/2), 300)
 
+button = panel.add_button("Launch")
+button.rect_transform.size=(100,30)
+button.rect_transform.position = (135, -20)
+
 # Add some text displaying messages to user
-text = panel.add_text("Booting Autopilot")
-text.rect_transform.position = (0, 20)
+text = panel.add_text("Autopilot ready")
+text.rect_transform.size = (380, 30)
+text.rect_transform.position = (0, +20)
 text.color = (1, 1, 1)
-text.size = 16
+text.size = 18
 
 # defining a display function to update terminal & UI at the same time
 def update_UI(message='Testing UI'):
@@ -43,6 +48,13 @@ target_apoapsis = 80000
 burn_time_to_apoapsis = 30
 
 # setting up streams
+button_clicked = conn.add_stream(getattr, button, 'clicked')
+
+# wait for button click
+while True:
+    if button_clicked():
+        break
+    time.sleep(0.1)
 
 # setting up autopilot
 vessel.auto_pilot.target_pitch_and_heading(90, 90)
