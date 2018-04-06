@@ -43,10 +43,11 @@ def update_UI(message='Testing UI'):
 vessel = conn.space_center.active_vessel
 
 # setting up variables
-SRB_pitch = 85
-target_inclination = -45
-target_apoapsis = 80000
-burn_time_to_apoapsis = 30
+SRB_pitch_over = 5
+target_inclination = 0
+transition_altitude = 35*1000
+target_apoapsis = 80*1000
+burn_time_to_circularize = 40
 
 # setting up streams
 button_clicked = conn.add_stream(getattr, button, 'clicked')
@@ -81,7 +82,7 @@ expr = conn.krpc.Expression.greater_than(
 event = conn.krpc.add_event(expr)
 with event.condition:
     event.wait()
-vessel.auto_pilot.target_pitch=SRB_pitch
+vessel.auto_pilot.target_pitch=90-SRB_pitch_over
 update_UI('Initiating turn')
 
 # waiting for SRBs to flame out before ditching them
@@ -105,7 +106,22 @@ vessel.auto_pilot.target_pitch=0
 vessel.auto_pilot.target_heading=0
 vessel.auto_pilot.target_roll=0
 vessel.auto_pilot.engage()
-update_UI('Pointing prograde')
+update_UI('Pointing prograde relative to surface')
+
+# waiting for altitude to match target before switching reference_frame
+expr = conn.krpc.Expression.greater_than(
+    conn.krpc.Expression.call(mean_altitude),
+    conn.krpc.Expression.constant_double(transition_altitude))
+event = conn.krpc.add_event(expr)
+with event.condition:
+    event.wait()
+vessel.auto_pilot.disengage()
+vessel.auto_pilot.reference_frame = vessel.orbital_reference_frame
+vessel.auto_pilot.target_pitch=0
+vessel.auto_pilot.target_heading=0
+vessel.auto_pilot.target_roll=180 # Swaps around between frames!
+vessel.auto_pilot.engage()
+update_UI('Pointing prograde relative to orbit')
 
 # waiting for apoapsis to match target before initiating MECO
 apoapsis_altitude = conn.get_call(getattr, vessel.orbit, 'apoapsis_altitude')
@@ -122,7 +138,7 @@ update_UI('Coasting to apoapsis')
 time_to_apoapsis = conn.get_call(getattr, vessel.orbit, 'time_to_apoapsis')
 expr = conn.krpc.Expression.less_than(
     conn.krpc.Expression.call(time_to_apoapsis),
-    conn.krpc.Expression.constant_double(burn_time_to_apoapsis))
+    conn.krpc.Expression.constant_double(burn_time_to_circularize/2))
 event = conn.krpc.add_event(expr)
 with event.condition:
     event.wait()
@@ -132,11 +148,20 @@ update_UI('Initiating circularization burn')
 # implement automatic staging between stage 2 and stage 3
 update_UI('Please stage manually')
 
-# stop circularization burn
-periapsis_altitude = conn.get_call(getattr, vessel.orbit, 'periapsis_altitude')
-expr = conn.krpc.Expression.greater_than(
-    conn.krpc.Expression.call(periapsis_altitude),
-    conn.krpc.Expression.constant_double(target_apoapsis))
+# stop circularization burn when apoapsis & periapsis swap around orbit
+period = conn.get_call(getattr, vessel.orbit, 'period')
+time_to_periapsis = conn.get_call(getattr, vessel.orbit, 'time_to_periapsis')
+expr = conn.krpc.Expression.or_(
+    conn.krpc.Expression.less_than(
+        conn.krpc.Expression.divide(
+            conn.krpc.Expression.call(time_to_periapsis),
+            conn.krpc.Expression.call(period)),
+        conn.krpc.Expression.constant_double(.25)),
+    conn.krpc.Expression.greater_than(
+        conn.krpc.Expression.divide(
+            conn.krpc.Expression.call(time_to_periapsis),
+            conn.krpc.Expression.call(period)),
+        conn.krpc.Expression.constant_double(.75)))    
 event = conn.krpc.add_event(expr)
 with event.condition:
     event.wait()
@@ -144,5 +169,4 @@ vessel.control.throttle = 0
 update_UI('MECO')
 
 # handing control back
-vessel.auto_pilot.sas = False
 update_UI('Autopilot releasing control')
