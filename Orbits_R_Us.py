@@ -57,7 +57,10 @@ while True:
     time.sleep(0.1)
 
 # setting up autopilot
-vessel.auto_pilot.target_pitch_and_heading(90, 90)
+vessel.auto_pilot.reference_frame = vessel.surface_reference_frame
+vessel.auto_pilot.target_pitch=90
+vessel.auto_pilot.target_heading=90
+vessel.auto_pilot.target_roll=0
 vessel.auto_pilot.engage()
 update_UI('Autopilot taking control')
 
@@ -77,7 +80,7 @@ expr = conn.krpc.Expression.greater_than(
 event = conn.krpc.add_event(expr)
 with event.condition:
     event.wait()
-vessel.auto_pilot.target_pitch_and_heading(SRB_pitch, 90)
+vessel.auto_pilot.target_pitch=SRB_pitch
 update_UI('Initiating turn')
 
 # waiting for SRBs to flame out before ditching them
@@ -94,12 +97,14 @@ update_UI('SRB Separation')
 # liquid fuel stage will start automatically, throttle already set
 update_UI('Stage 2 Ignition')
 
-# switching to SAS prograde
+# switching to new reference_frame
 vessel.auto_pilot.disengage()
-vessel.auto_pilot.sas = True
-time.sleep(0.1) # check if this is truly necessary
-vessel.auto_pilot.sas_mode = vessel.auto_pilot.sas_mode.prograde
-update_UI('Setting SAS to point prograde')
+vessel.auto_pilot.reference_frame = vessel.surface_velocity_reference_frame
+vessel.auto_pilot.target_pitch=0
+vessel.auto_pilot.target_heading=0
+vessel.auto_pilot.target_roll=0
+vessel.auto_pilot.engage()
+update_UI('Pointing prograde')
 
 # waiting for apoapsis to match target before initiating MECO
 apoapsis_altitude = conn.get_call(getattr, vessel.orbit, 'apoapsis_altitude')
