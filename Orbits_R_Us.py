@@ -44,6 +44,7 @@ vessel = conn.space_center.active_vessel
 
 # setting up variables
 SRB_pitch = 85
+target_inclination = -45
 target_apoapsis = 80000
 burn_time_to_apoapsis = 30
 
@@ -59,7 +60,7 @@ while True:
 # setting up autopilot
 vessel.auto_pilot.reference_frame = vessel.surface_reference_frame
 vessel.auto_pilot.target_pitch=90
-vessel.auto_pilot.target_heading=90
+vessel.auto_pilot.target_heading=90-target_inclination
 vessel.auto_pilot.target_roll=0
 vessel.auto_pilot.engage()
 update_UI('Autopilot taking control')
