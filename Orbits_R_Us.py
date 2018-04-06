@@ -45,9 +45,9 @@ vessel = conn.space_center.active_vessel
 # setting up variables
 SRB_pitch_over = 5
 target_inclination = 0
-transition_altitude = 35*1000
+transition_altitude = 35*1000 # when to switch to orbital_reference_frame
 target_apoapsis = 80*1000
-burn_time_to_circularize = 40
+burn_time_to_circularize = 60 # hardcoded for now, calculate eventually
 
 # setting up streams
 button_clicked = conn.add_stream(getattr, button, 'clicked')
@@ -123,7 +123,7 @@ vessel.auto_pilot.target_roll=180 # Swaps around between frames!
 vessel.auto_pilot.engage()
 update_UI('Pointing prograde relative to orbit')
 
-# waiting for apoapsis to match target before initiating MECO
+# waiting for apoapsis to match target before coasting
 apoapsis_altitude = conn.get_call(getattr, vessel.orbit, 'apoapsis_altitude')
 expr = conn.krpc.Expression.greater_than(
     conn.krpc.Expression.call(apoapsis_altitude),
@@ -132,6 +132,12 @@ event = conn.krpc.add_event(expr)
 with event.condition:
     event.wait()
 vessel.control.throttle = 0
+vessel.auto_pilot.disengage()
+vessel.auto_pilot.reference_frame = vessel.surface_reference_frame
+vessel.auto_pilot.target_pitch=0
+vessel.auto_pilot.target_heading=90-target_inclination
+vessel.auto_pilot.target_roll=0 # Swaps around between frames!
+vessel.auto_pilot.engage()
 update_UI('Coasting to apoapsis')
 
 # waiting before starting circularization burn
@@ -144,9 +150,6 @@ with event.condition:
     event.wait()
 vessel.control.throttle = 1
 update_UI('Initiating circularization burn')
-
-# implement automatic staging between stage 2 and stage 3
-update_UI('Please stage manually')
 
 # stop circularization burn when apoapsis & periapsis swap around orbit
 period = conn.get_call(getattr, vessel.orbit, 'period')
@@ -161,7 +164,7 @@ expr = conn.krpc.Expression.or_(
         conn.krpc.Expression.divide(
             conn.krpc.Expression.call(time_to_periapsis),
             conn.krpc.Expression.call(period)),
-        conn.krpc.Expression.constant_double(.75)))    
+        conn.krpc.Expression.constant_double(.75)))
 event = conn.krpc.add_event(expr)
 with event.condition:
     event.wait()
