@@ -59,9 +59,8 @@ while True:
     time.sleep(0.1)
 
 # roll is less critical, and tends to oscillate
-# vessel.auto_pilot.attenuation_angle=(1,3,1)
-vessel.auto_pilot.time_to_peak=(3,10,5)
-vessel.auto_pilot.overshoot=(0.01,0.01,0.005)
+vessel.auto_pilot.time_to_peak=(5,10,5)
+vessel.auto_pilot.overshoot=(0.005,0.010,0.005)
 
 # setting up autopilot
 vessel.auto_pilot.reference_frame = vessel.surface_reference_frame
