@@ -3,7 +3,7 @@
 # up into a nice clean orbit
 
 # Changes made to rocket for this script to work:
-# 1. Disabled roll control on the first stage fins, to reduce oscillations
+# 1. Added reaction wheel to main stage
 
 import time
 import krpc
@@ -57,6 +57,11 @@ while True:
     if button_clicked():
         break
     time.sleep(0.1)
+
+# roll is less critical, and tends to oscillate
+# vessel.auto_pilot.attenuation_angle=(1,3,1)
+vessel.auto_pilot.time_to_peak=(3,10,5)
+vessel.auto_pilot.overshoot=(0.01,0.01,0.005)
 
 # setting up autopilot
 vessel.auto_pilot.reference_frame = vessel.surface_reference_frame
