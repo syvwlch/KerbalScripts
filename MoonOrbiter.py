@@ -43,7 +43,7 @@ vessel = conn.space_center.active_vessel
 
 # setting up variables
 initial_pitch_over = 10
-target_inclination = 90
+target_inclination = 0
 transition_altitude = 35*1000 # when to switch to orbital_reference_frame
 target_apoapsis = 125*1000
 burn_time_to_circularize = 60 # hardcoded for now, calculate eventually
