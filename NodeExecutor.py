@@ -68,6 +68,7 @@ flow_rate = F / Isp
 burn_time = (m0 - m1) / flow_rate
 
 # point to maneuver
+update_UI('Aligning to burn')
 vessel.auto_pilot.reference_frame = node.reference_frame
 vessel.auto_pilot.target_direction = (0, 1, 0)
 vessel.auto_pilot.engage()
