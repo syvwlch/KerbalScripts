@@ -79,6 +79,8 @@ burn_ut =  node.ut - (burn_time/2.)
 lead_time = 5
 update_UI('Warping to node')
 conn.space_center.warp_to(burn_ut - lead_time)
+while ut() < burn_ut:
+    pass
 
 # executing 98% of the burn
 update_UI('Executing burn')
