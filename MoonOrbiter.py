@@ -45,8 +45,8 @@ vessel = conn.space_center.active_vessel
 initial_pitch_over = 10
 target_inclination = 0
 transition_altitude = 35*1000 # when to switch to orbital_reference_frame
-target_apoapsis = 125*1000
-burn_time_to_circularize = 60 # hardcoded for now, calculate eventually
+target_apoapsis = 100*1000
+burn_time_to_circularize = 80 # hardcoded for now, calculate eventually
 
 # setting up streams
 button_clicked = conn.add_stream(getattr, button, 'clicked')
@@ -56,6 +56,10 @@ while True:
     if button_clicked():
         break
     time.sleep(0.1)
+
+# roll is less critical, and tends to oscillate
+vessel.auto_pilot.time_to_peak=(5,10,5)
+vessel.auto_pilot.overshoot=(0.005,0.010,0.005)
 
 # setting up autopilot
 vessel.auto_pilot.reference_frame = vessel.surface_reference_frame
