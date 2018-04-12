@@ -109,11 +109,5 @@ while True:
 button.remove()
 node.remove()
 
-# pointing prograde before handing control back
-update_UI('Pointing prograde')
-vessel.auto_pilot.reference_frame = vessel.orbital_reference_frame
-vessel.auto_pilot.target_direction = (0, 1, 0)
-vessel.auto_pilot.wait()
-
 update_UI('Have a safe flight!')
 time.sleep(3)
