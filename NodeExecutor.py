@@ -35,9 +35,12 @@ def update_UI(message='...'):
 # setting up streams & aliases
 ut = conn.add_stream(getattr, conn.space_center, 'ut')
 vessel = conn.space_center.active_vessel
+ap  = vessel.auto_pilot
 
 # defining the actual node execution logic
 def node_executor():
+    abort=False
+
     # retrieve the next node
     if len(vessel.control.nodes) == 0 :
         update_UI('No node found!')
@@ -69,12 +72,12 @@ def node_executor():
     flow_rate = F / Isp
     burn_time = (m0 - m1) / flow_rate
 
-    # point to maneuver
+    # point to maneuver, abortable
     update_UI('Aligning to burn')
-    vessel.auto_pilot.reference_frame = node.reference_frame
-    vessel.auto_pilot.target_direction = (0, 1, 0)
-    vessel.auto_pilot.engage()
-    vessel.auto_pilot.wait()
+    ap.reference_frame = node.reference_frame
+    ap.target_direction = (0, 1, 0)
+    ap.engage()
+    ap.wait()
 
     # warp to burn
     burn_ut =  node.ut - (burn_time/2.)
@@ -108,7 +111,7 @@ def node_executor():
             button.clicked = False
             break
         time.sleep(0.1)
-    vessel.auto_pilot.disengage()
+    ap.disengage()
     button.remove()
     node.remove()
 
