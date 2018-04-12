@@ -72,7 +72,7 @@ def node_executor():
     flow_rate = F / Isp
     burn_time = (m0 - m1) / flow_rate
 
-    # point to maneuver, abortable
+    # point to maneuver
     update_UI('Aligning to burn')
     ap.reference_frame = node.reference_frame
     ap.target_direction = (0, 1, 0)
@@ -84,21 +84,32 @@ def node_executor():
     lead_time = 5
     update_UI('Warping to node')
     conn.space_center.warp_to(burn_ut - lead_time)
-    while ut() < burn_ut:
+    while ut() < burn_ut :
         pass
 
-    # executing 98% of the burn
+    # executing 98% of node dV
+    # abortable
+    # auto-aborts if autopilot heading error exceeds 20 degrees
     update_UI('Executing burn')
-    vessel.control.throttle = 1.0
-    time.sleep(burn_time * 0.98)
-
-    # fine tuning burn to max of 0.1 m/s or 0.1% of node dV
-    update_UI('Fine tuning burn')
-    vessel.control.throttle = 0.05
     remaining_burn = conn.add_stream(node.remaining_burn_vector, node.reference_frame)
-    while remaining_burn()[1] > max(0.1, delta_v * 0.001):
-        pass
+    vessel.control.throttle = 1.0
+    button = panel.add_button("Abort")
+    button.rect_transform.size=(100,30)
+    button.rect_transform.position = (135, -20)
+    button_clicked = conn.add_stream(getattr, button, 'clicked')
+    while True:
+        if button_clicked() or ap.error > 20:
+            abort = True
+        if remaining_burn()[1] < delta_v * 0.02:
+            update_UI('Fine tuning burn')
+            vessel.control.throttle = 0.05
+        if remaining_burn()[1] < delta_v * 0.001 or abort:
+            break
+        time.sleep(0.1)
     vessel.control.throttle = 0.0
+
+    # remove the abort button
+    button.remove()
 
     # wait for button click to remove the node & release autopilot
     update_UI('Click to delete node')
@@ -111,8 +122,8 @@ def node_executor():
             button.clicked = False
             break
         time.sleep(0.1)
-    ap.disengage()
     button.remove()
+    ap.disengage()
     node.remove()
 
     # say goodbye
