@@ -45,8 +45,8 @@ vessel = conn.space_center.active_vessel
 initial_pitch_over = 15
 target_inclination = 0
 transition_altitude = 35*1000 # when to switch to orbital_reference_frame
-target_apoapsis = 80*1000
-burn_time_to_circularize = 120 # hardcoded for now, calculate eventually
+target_apoapsis = 100*1000
+burn_time_to_circularize = 90 # hardcoded for now, calculate eventually
 
 # setting up streams
 button_clicked = conn.add_stream(getattr, button, 'clicked')
