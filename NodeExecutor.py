@@ -97,7 +97,7 @@ def node_executor():
         pass
     vessel.control.throttle = 0.0
 
-    # wait for button click to remove the node
+    # wait for button click to remove the node & release autopilot
     update_UI('Click to delete node')
     button = panel.add_button("Delete")
     button.rect_transform.size=(100,30)
@@ -108,6 +108,7 @@ def node_executor():
             button.clicked = False
             break
         time.sleep(0.1)
+    vessel.auto_pilot.disengage()
     button.remove()
     node.remove()
 
