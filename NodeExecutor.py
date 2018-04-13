@@ -3,6 +3,7 @@
 from math import exp
 import time
 import krpc
+
 conn = krpc.connect(name='Node Executor')
 
 # Set up the UI
@@ -20,7 +21,7 @@ rect.size = (400, 100)
 rect.position = (210-(screen_size[0]/2), 300)
 
 # Add some text displaying messages to user
-text = panel.add_text("Retrieving next maneuver node")
+text = panel.add_text("...")
 text.rect_transform.size = (380, 30)
 text.rect_transform.position = (0, +20)
 text.color = (1, 1, 1)
