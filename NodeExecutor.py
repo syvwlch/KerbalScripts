@@ -37,7 +37,8 @@ ut = conn.add_stream(getattr, conn.space_center, 'ut')
 vessel = conn.space_center.active_vessel
 ap  = vessel.auto_pilot
 
-def get_node():
+# defining a function to retrieve the next node
+def get_node(require_click=True):
     # retrieve the next node
     if len(vessel.control.nodes) == 0 :
         update_UI('No node found!')
@@ -48,17 +49,18 @@ def get_node():
     node = vessel.control.nodes[0]
 
     # wait for button click to execute node
-    update_UI('Click to execute node')
-    button = panel.add_button("Execute")
-    button.rect_transform.size=(100,30)
-    button.rect_transform.position = (135, -20)
-    button_clicked = conn.add_stream(getattr, button, 'clicked')
-    while True:
-        if button_clicked():
-            button.clicked = False
-            break
-        time.sleep(0.1)
-    button.remove()
+    if require_click:
+        update_UI('Click to execute node')
+        button = panel.add_button("Execute")
+        button.rect_transform.size=(100,30)
+        button.rect_transform.position = (135, -20)
+        button_clicked = conn.add_stream(getattr, button, 'clicked')
+        while True:
+            if button_clicked():
+                button.clicked = False
+                break
+            time.sleep(0.1)
+        button.remove()
     return node
 
 # defining the actual node execution logic
