@@ -4,7 +4,7 @@ from math import exp
 import time
 import krpc
 
-conn = krpc.connect(name='Node Executor')
+conn = krpc.connect(name='NodeExecutor')
 
 # Set up the UI
 canvas = conn.ui.stock_canvas
@@ -17,8 +17,12 @@ panel = canvas.add_panel()
 
 # Position the panel relative to the center of the screen
 rect = panel.rect_transform
-rect.size = (400, 100)
-rect.position = (210-(screen_size[0]/2), 300)
+width = 400
+height = 80
+padding_w = 0
+Padding_h = 65 + height
+rect.size = (width, height)
+rect.position = (width/2+padding_w-screen_size[0]/2, screen_size[1]/2-(height/2+Padding_h))
 
 # Add some text displaying messages to user
 text = panel.add_text("...")
@@ -137,5 +141,6 @@ def execute_node(node):
     return
 
 # main loop
-while True:
-    execute_node(get_node())
+if __name__ == "__main__":
+    while True:
+        execute_node(get_node())
