@@ -2,9 +2,12 @@
 
 # initial release leaves staging to the pilot
 
+from math import sqrt
 import time
 import krpc
-conn = krpc.connect(name='RemoteAutoPilot')
+from NodeExecutor import execute_node
+
+conn = krpc.connect(name='Launcher')
 
 # Set up the UI
 canvas = conn.ui.stock_canvas
@@ -17,8 +20,12 @@ panel = canvas.add_panel()
 
 # Position the panel relative to the center of the screen
 rect = panel.rect_transform
-rect.size = (400, 100)
-rect.position = (210-(screen_size[0]/2), 300)
+width = 400
+height = 80
+padding_w = 0
+Padding_h = 65
+rect.size = (width, height)
+rect.position = (width/2+padding_w-screen_size[0]/2, screen_size[1]/2-(height/2+Padding_h))
 
 button = panel.add_button("Launch")
 button.rect_transform.size=(100,30)
@@ -48,6 +55,7 @@ burn_time_to_circularize = 90 # hardcoded for now, calculate eventually
 
 # setting up streams
 button_clicked = conn.add_stream(getattr, button, 'clicked')
+ut = conn.add_stream(getattr, conn.space_center, 'ut')
 
 # wait for button click
 while True:
@@ -133,36 +141,19 @@ vessel.auto_pilot.target_roll=0 # Swaps around between frames!
 vessel.auto_pilot.engage()
 update_UI('Coasting to apoapsis')
 
-# waiting before starting circularization burn
-time_to_apoapsis = conn.get_call(getattr, vessel.orbit, 'time_to_apoapsis')
-expr = conn.krpc.Expression.less_than(
-    conn.krpc.Expression.call(time_to_apoapsis),
-    conn.krpc.Expression.constant_double(burn_time_to_circularize/2))
-event = conn.krpc.add_event(expr)
-with event.condition:
-    event.wait()
-vessel.control.throttle = 1
-update_UI('Initiating circularization burn')
+# setting up circulization maneuver
+mu = vessel.orbit.body.gravitational_parameter
+r = vessel.orbit.apoapsis
+a1 = vessel.orbit.semi_major_axis
+a2 = r
+v1 = sqrt(mu*((2./r)-(1./a1)))
+v2 = sqrt(mu*((2./r)-(1./a2)))
+delta_v = v2 - v1
+node = vessel.control.add_node(
+    ut() + vessel.orbit.time_to_apoapsis, prograde=delta_v)
 
-# stop circularization burn when apoapsis & periapsis swap around orbit
-period = conn.get_call(getattr, vessel.orbit, 'period')
-time_to_periapsis = conn.get_call(getattr, vessel.orbit, 'time_to_periapsis')
-expr = conn.krpc.Expression.or_(
-    conn.krpc.Expression.less_than(
-        conn.krpc.Expression.divide(
-            conn.krpc.Expression.call(time_to_periapsis),
-            conn.krpc.Expression.call(period)),
-        conn.krpc.Expression.constant_double(.25)),
-    conn.krpc.Expression.greater_than(
-        conn.krpc.Expression.divide(
-            conn.krpc.Expression.call(time_to_periapsis),
-            conn.krpc.Expression.call(period)),
-        conn.krpc.Expression.constant_double(.75)))
-event = conn.krpc.add_event(expr)
-with event.condition:
-    event.wait()
-vessel.control.throttle = 0
-update_UI('MECO')
+# execute node
+execute_node(node)
 
 # handing control back
 update_UI('Autopilot releasing control')
