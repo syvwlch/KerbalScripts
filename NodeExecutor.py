@@ -37,10 +37,7 @@ ut = conn.add_stream(getattr, conn.space_center, 'ut')
 vessel = conn.space_center.active_vessel
 ap  = vessel.auto_pilot
 
-# defining the actual node execution logic
-def node_executor():
-    abort=False
-
+def get_node():
     # retrieve the next node
     if len(vessel.control.nodes) == 0 :
         update_UI('No node found!')
@@ -62,6 +59,11 @@ def node_executor():
             break
         time.sleep(0.1)
     button.remove()
+    return node
+
+# defining the actual node execution logic
+def node_executor(node):
+    abort=False
 
     # calculating burn time (using rocket equation)
     delta_v = node.delta_v
@@ -132,4 +134,4 @@ def node_executor():
 
 # main loop
 while True:
-    node_executor()
+    node_executor(get_node())
