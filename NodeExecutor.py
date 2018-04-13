@@ -83,6 +83,7 @@ def execute_node(node):
 
     # point to maneuver
     update_UI('Aligning to burn')
+    conn.space_center.physics_war_factor = 0
     ap.reference_frame = node.reference_frame
     ap.target_direction = (0, 1, 0)
     ap.engage()
