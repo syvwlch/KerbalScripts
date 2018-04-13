@@ -62,7 +62,7 @@ def get_node():
     return node
 
 # defining the actual node execution logic
-def node_executor(node):
+def execute_node(node):
     abort=False
 
     # calculating burn time (using rocket equation)
@@ -134,4 +134,4 @@ def node_executor(node):
 
 # main loop
 while True:
-    node_executor(get_node())
+    execute_node(get_node())
