@@ -144,7 +144,11 @@ if __name__ == "__main__":
 
     ignition()
 
+    conn.space_center.physics_war_factor = 2
+
     ascent()
+
+    conn.space_center.physics_war_factor = 0
 
     execute_node(circularization())
 
