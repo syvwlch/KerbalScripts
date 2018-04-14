@@ -52,7 +52,7 @@ burn_time_to_circularize = 90 # hardcoded for now, calculate eventually
 # setting up streams
 ut = conn.add_stream(getattr, conn.space_center, 'ut')
 
-def countdown(require_click=True):
+def hold_for_click(require_click=True):
     # wait button click to launch
     if require_click:
         update_UI('Click to launch')
@@ -170,7 +170,7 @@ def goodbye():
 
 # main loop
 if __name__ == "__main__":
-    countdown()
+    hold_for_click()
 
     ignition()
 
