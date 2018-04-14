@@ -2,9 +2,12 @@
 
 # initial release leaves staging to the pilot
 
+from math import sqrt
 import time
 import krpc
-conn = krpc.connect(name='RemoteAutoPilot')
+from NodeExecutor import execute_node
+
+conn = krpc.connect(name='Launcher')
 
 # Set up the UI
 canvas = conn.ui.stock_canvas
@@ -17,152 +20,136 @@ panel = canvas.add_panel()
 
 # Position the panel relative to the center of the screen
 rect = panel.rect_transform
-rect.size = (400, 100)
-rect.position = (210-(screen_size[0]/2), 300)
-
-button = panel.add_button("Launch")
-button.rect_transform.size=(100,30)
-button.rect_transform.position = (135, -20)
+width = 400
+height = 80
+padding_w = 0
+Padding_h = 65
+rect.size = (width, height)
+rect.position = (width/2+padding_w-screen_size[0]/2, screen_size[1]/2-(height/2+Padding_h))
 
 # Add some text displaying messages to user
-text = panel.add_text("Autopilot ready")
+text = panel.add_text("...")
 text.rect_transform.size = (380, 30)
 text.rect_transform.position = (0, +20)
 text.color = (1, 1, 1)
 text.size = 18
 
 # defining a display function to update terminal & UI at the same time
-def update_UI(message='Testing UI'):
+def update_UI(message='...'):
     print(message)
     text.content = message
     return
 
 vessel = conn.space_center.active_vessel
+ap = vessel.auto_pilot
 
 # setting up variables
-initial_pitch_over = 15
+turn_start_altitude = 1000
+turn_start_angle = 80
+turn_end_altitude = 60*1000
 target_inclination = 0
-transition_altitude = 35*1000 # when to switch to orbital_reference_frame
-target_apoapsis = 100*1000
-burn_time_to_circularize = 90 # hardcoded for now, calculate eventually
+target_altitude = 80*1000
 
 # setting up streams
-button_clicked = conn.add_stream(getattr, button, 'clicked')
+ut = conn.add_stream(getattr, conn.space_center, 'ut')
+altitude = conn.add_stream(getattr, vessel.flight(), 'mean_altitude')
+apoapsis = conn.add_stream(getattr, vessel.orbit, 'apoapsis_altitude')
 
-# wait for button click
-while True:
-    if button_clicked():
-        break
-    time.sleep(0.1)
+def hold_for_click(require_click=True):
+    # wait button click to launch
+    if require_click:
+        update_UI('Click to launch')
+        button = panel.add_button("Launch")
+        button.rect_transform.size=(100,30)
+        button.rect_transform.position = (135, -20)
+        button_clicked = conn.add_stream(getattr, button, 'clicked')
+        while True:
+            if button_clicked():
+                button.clicked = False
+                break
+            time.sleep(0.1)
+        button.remove()
+    return
 
-# roll is less critical, and tends to oscillate
-vessel.auto_pilot.time_to_peak=(5,10,5)
-vessel.auto_pilot.overshoot=(0.005,0.010,0.005)
+def ignition():
+    # Pre-ignition setup
+    vessel.control.sas = False
+    vessel.control.rcs = False
+    vessel.control.throttle = 1.0
+    time.sleep(1)
 
-# setting up autopilot
-vessel.auto_pilot.reference_frame = vessel.surface_reference_frame
-vessel.auto_pilot.target_pitch=90
-vessel.auto_pilot.target_heading=90-target_inclination
-vessel.auto_pilot.target_roll=0
-vessel.auto_pilot.engage()
-update_UI('Autopilot taking control')
+    # setting up autopilot
+    ap.time_to_peak=(5,10,5)
+    ap.overshoot=(0.005,0.010,0.005)
+    ap.reference_frame = vessel.surface_reference_frame
+    ap.target_pitch=90
+    ap.target_heading=90-target_inclination
+    ap.target_roll=180
+    ap.engage()
 
-# setting throttle
-vessel.control.throttle = 1
-time.sleep(1)
+    # releasing clamps & igniting first stage
+    vessel.control.activate_next_stage()
+    update_UI('Ignition')
+    return
 
-# releasing clamps & igniting first stage
-vessel.control.activate_next_stage()
-update_UI('Ignition')
+def ascent_angle(altitude):
+    if altitude > turn_start_altitude and altitude < turn_end_altitude:
+        frac = ((turn_end_altitude - altitude) /
+                (turn_end_altitude - turn_start_altitude))
+        turn_angle = frac * turn_start_angle
+    elif altitude >= turn_end_altitude:
+        turn_angle = 0
+    else:
+        turn_angle = 90
+    return turn_angle
 
-# waiting for altitude to exceed 200 meters before initial pitch over
-mean_altitude = conn.get_call(getattr, vessel.flight(), 'mean_altitude')
-expr = conn.krpc.Expression.greater_than(
-    conn.krpc.Expression.call(mean_altitude),
-    conn.krpc.Expression.constant_double(300))
-event = conn.krpc.add_event(expr)
-with event.condition:
-    event.wait()
-vessel.auto_pilot.target_pitch=90-initial_pitch_over
-update_UI('Initial pitch over')
+def ascent():
+    update_UI('Gravity turn')
+    turn_angle = 90
+    while True:
+        # ascent profile
+        new_turn_angle = ascent_angle(altitude())
+        if abs(new_turn_angle - turn_angle) > 0.5:
+            turn_angle = new_turn_angle
+            ap.target_pitch = turn_angle
 
-# poiting prograde relative to atmosphere at 5km altitude
-expr = conn.krpc.Expression.greater_than(
-    conn.krpc.Expression.call(mean_altitude),
-    conn.krpc.Expression.constant_double(5000))
-event = conn.krpc.add_event(expr)
-with event.condition:
-    event.wait()
-vessel.auto_pilot.disengage()
-vessel.auto_pilot.reference_frame = vessel.surface_velocity_reference_frame
-vessel.auto_pilot.target_pitch=0
-vessel.auto_pilot.target_heading=0
-vessel.auto_pilot.target_roll=0
-vessel.auto_pilot.engage()
-update_UI('Initiating gravity turn')
+        # break out when reaching target apoapsis
+        if apoapsis() > target_altitude:
+            update_UI('Target apoapsis reached')
+            vessel.control.throttle = 0.0
+            break
+    return
 
-# waiting for altitude to match target before switching reference_frame
-expr = conn.krpc.Expression.greater_than(
-    conn.krpc.Expression.call(mean_altitude),
-    conn.krpc.Expression.constant_double(transition_altitude))
-event = conn.krpc.add_event(expr)
-with event.condition:
-    event.wait()
-vessel.auto_pilot.disengage()
-vessel.auto_pilot.reference_frame = vessel.orbital_reference_frame
-vessel.auto_pilot.target_pitch=0
-vessel.auto_pilot.target_heading=0
-vessel.auto_pilot.target_roll=180 # Swaps around between frames!
-vessel.auto_pilot.engage()
-update_UI('Transitioning to orbital reference frame')
+def circularization():
+    # setting up circulization maneuver
+    mu = vessel.orbit.body.gravitational_parameter
+    r = vessel.orbit.apoapsis
+    a1 = vessel.orbit.semi_major_axis
+    a2 = r
+    v1 = sqrt(mu*((2./r)-(1./a1)))
+    v2 = sqrt(mu*((2./r)-(1./a2)))
+    delta_v = v2 - v1
+    node = vessel.control.add_node(
+        ut() + vessel.orbit.time_to_apoapsis, prograde=delta_v)
+    return node
 
-# waiting for apoapsis to match target before coasting
-apoapsis_altitude = conn.get_call(getattr, vessel.orbit, 'apoapsis_altitude')
-expr = conn.krpc.Expression.greater_than(
-    conn.krpc.Expression.call(apoapsis_altitude),
-    conn.krpc.Expression.constant_double(target_apoapsis))
-event = conn.krpc.add_event(expr)
-with event.condition:
-    event.wait()
-vessel.control.throttle = 0
-vessel.auto_pilot.disengage()
-vessel.auto_pilot.reference_frame = vessel.surface_reference_frame
-vessel.auto_pilot.target_pitch=0
-vessel.auto_pilot.target_heading=90-target_inclination
-vessel.auto_pilot.target_roll=0 # Swaps around between frames!
-vessel.auto_pilot.engage()
-update_UI('Coasting to apoapsis')
+def goodbye():
+    update_UI('Enjoy your orbit!')
+    time.sleep(3)
+    return
 
-# waiting before starting circularization burn
-time_to_apoapsis = conn.get_call(getattr, vessel.orbit, 'time_to_apoapsis')
-expr = conn.krpc.Expression.less_than(
-    conn.krpc.Expression.call(time_to_apoapsis),
-    conn.krpc.Expression.constant_double(burn_time_to_circularize/2))
-event = conn.krpc.add_event(expr)
-with event.condition:
-    event.wait()
-vessel.control.throttle = 1
-update_UI('Initiating circularization burn')
+# main loop
+if __name__ == "__main__":
+    hold_for_click()
 
-# stop circularization burn when apoapsis & periapsis swap around orbit
-period = conn.get_call(getattr, vessel.orbit, 'period')
-time_to_periapsis = conn.get_call(getattr, vessel.orbit, 'time_to_periapsis')
-expr = conn.krpc.Expression.or_(
-    conn.krpc.Expression.less_than(
-        conn.krpc.Expression.divide(
-            conn.krpc.Expression.call(time_to_periapsis),
-            conn.krpc.Expression.call(period)),
-        conn.krpc.Expression.constant_double(.25)),
-    conn.krpc.Expression.greater_than(
-        conn.krpc.Expression.divide(
-            conn.krpc.Expression.call(time_to_periapsis),
-            conn.krpc.Expression.call(period)),
-        conn.krpc.Expression.constant_double(.75)))
-event = conn.krpc.add_event(expr)
-with event.condition:
-    event.wait()
-vessel.control.throttle = 0
-update_UI('MECO')
+    ignition()
 
-# handing control back
-update_UI('Autopilot releasing control')
+    conn.space_center.physics_war_factor = 2
+
+    ascent()
+
+    conn.space_center.physics_war_factor = 0
+
+    execute_node(circularization())
+
+    goodbye()
