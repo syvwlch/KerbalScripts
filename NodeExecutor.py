@@ -140,6 +140,7 @@ def execute_node(node):
 
     # say goodbye
     update_UI('Have a safe flight!')
+    time.sleep(1)
     return
 
 # main loop
