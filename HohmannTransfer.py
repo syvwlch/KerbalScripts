@@ -85,7 +85,7 @@ def Hohmann_nodes(target_apoapsis,start_time):
     dv1 = sqrt(mu/r1)*(sqrt(2*r2/(r1+r2))-1)
     dv2 = sqrt(mu/r2)*(1-sqrt(2*r1/(r1+r2)))
     node1 = vessel.control.add_node(start_time, prograde=dv1)
-    node2 = vessel.control.add_node(start_time + 1000, prograde=dv2)
+    node2 = vessel.control.add_node(end_time, prograde=dv2)
     nodes = (node1, node2)
     return nodes
 
