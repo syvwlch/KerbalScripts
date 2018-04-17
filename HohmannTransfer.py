@@ -76,16 +76,22 @@ def check_initial_orbit(maximum_eccentricity=0.01,require_click=True):
         button.remove()
     return
 
-def Hohmann_nodes(target_apoapsis,start_time):
-    # setting up first maneuver
+def Hohmann_nodes(target_altitude,start_time):
+    # parameters, assuming circular orbits
     mu = vessel.orbit.body.gravitational_parameter
-    r1 = vessel.orbit.apoapsis
-    r2 = target_apoapsis + vessel.orbit.body.equatorial_radius
-    end_time = start_time + pi*sqrt(pow(r1+r2,3)/(8*mu))
-    dv1 = sqrt(mu/r1)*(sqrt(2*r2/(r1+r2))-1)
-    dv2 = sqrt(mu/r2)*(1-sqrt(2*r1/(r1+r2)))
+    a1 = vessel.orbit.semi_major_axis
+    a2 = target_altitude + vessel.orbit.body.equatorial_radius
+    # setting up first maneuver
+    dv1 = sqrt(mu/a1)*(sqrt(2*a2/(a1+a2))-1)
     node1 = vessel.control.add_node(start_time, prograde=dv1)
-    node2 = vessel.control.add_node(end_time, prograde=dv2)
+    # setting up second maneuver
+    # transfer_time = pi*sqrt(pow(a1+a2,3)/(8*mu))
+    if dv1 > 0:
+        transfer_time = node1.orbit.time_to_apoapsis
+    else:
+        transfer_time = node1.orbit.time_to_periapsis
+    dv2 = sqrt(mu/a2)*(1-sqrt(2*a1/(a1+a2)))
+    node2 = vessel.control.add_node(start_time + transfer_time, prograde=dv2)
     nodes = (node1, node2)
     return nodes
 
@@ -99,6 +105,6 @@ if __name__ == "__main__":
 
     check_initial_orbit()
 
-    Hohmann_nodes(200*1000, ut() + vessel.orbit.time_to_apoapsis)
+    Hohmann_nodes(200*1000, ut() + 8500)
 
     goodbye()
