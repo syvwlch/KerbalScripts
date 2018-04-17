@@ -89,7 +89,6 @@ def Hohmann_nodes(target_altitude,start_time):
     dv1 = sqrt(mu/a1)*(sqrt(2*a2/(a1+a2))-1)
     node1 = vessel.control.add_node(start_time, prograde=dv1)
     # setting up second maneuver
-    # transfer_time = Hohmann_transfer_time(a1,a2)
     if dv1 > 0:
         transfer_time = node1.orbit.time_to_apoapsis
     else:
