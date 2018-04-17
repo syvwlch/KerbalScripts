@@ -125,6 +125,13 @@ def Hohmann_nodes(target_altitude,start_time):
     update_UI('Phase angle change: %d' % (Hohmann_phase_angle(a1,a2) % 360))
     return nodes
 
+def Keostationary(longitude):
+    a1 = vessel.orbit.semi_major_axis
+    a2 = 2863330 + vessel.orbit.body.equatorial_radius
+    target_longitude = (longitude - Hohmann_phase_angle(a1,a2) + 360) % 360
+    Hohmann_nodes(2863330, ut() + time_to_longitude(target_longitude))
+    return
+
 def goodbye():
     # update_UI('Nodes added. Burn safe!')
     time.sleep(3)
@@ -135,6 +142,6 @@ if __name__ == "__main__":
 
     check_initial_orbit()
 
-    Hohmann_nodes(2863330, ut() + 60)
+    Keostationary(285.425) # right over the KSC
 
     goodbye()
