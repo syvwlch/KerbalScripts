@@ -77,8 +77,16 @@ def check_initial_orbit(maximum_eccentricity=0.01,require_click=True):
     return
 
 def Hohmann_transfer_time(a1,a2):
+    mu = vessel.orbit.body.gravitational_parameter
     transfer_time = pi*sqrt(pow(a1+a2,3)/(8*mu))
     return transfer_time
+
+def Hohmann_phase_angle(a1,a2):
+    mu = vessel.orbit.body.gravitational_parameter
+    transfer_time = Hohmann_transfer_time(a1,a2)
+    period = 2 * pi * sqrt(pow(a2,3)/mu)
+    phase_angle = 180 - 360 * transfer_time / period
+    return phase_angle
 
 def Hohmann_nodes(target_altitude,start_time):
     # parameters, assuming circular orbits
@@ -96,10 +104,11 @@ def Hohmann_nodes(target_altitude,start_time):
     dv2 = sqrt(mu/a2)*(1-sqrt(2*a1/(a1+a2)))
     node2 = vessel.control.add_node(start_time + transfer_time, prograde=dv2)
     nodes = (node1, node2)
+    update_UI('Phase angle change: %d' % (Hohmann_phase_angle(a1,a2) % 360))
     return nodes
 
 def goodbye():
-    update_UI('Nodes added. Burn safe!')
+    # update_UI('Nodes added. Burn safe!')
     time.sleep(3)
     return
 
@@ -108,6 +117,6 @@ if __name__ == "__main__":
 
     check_initial_orbit()
 
-    Hohmann_nodes(200*1000, ut() + 8500)
+    Hohmann_nodes(2863330, ut() + 60)
 
     goodbye()
