@@ -88,6 +88,24 @@ def Hohmann_phase_angle(a1,a2):
     phase_angle = 180 - 360 * transfer_time / period
     return phase_angle
 
+def time_to_longitude(target_longitude):
+    # assumes circular, equatorial orbit
+    # assumes orbit rotates faster than body being orbited
+    phase_angle = vessel.flight(vessel.orbit.body.reference_frame).longitude - target_longitude
+    a = vessel.orbit.semi_major_axis
+    mu = vessel.orbit.body.gravitational_parameter
+    period1 = 2 * pi * sqrt(pow(a,3)/mu)
+    period2 = vessel.orbit.body.rotational_period
+    period = (period1*period2)/(period1-period2)
+    if period == 0:
+        if phase_angle == 0:
+            time_to_longitude = 0
+        else:
+            time_to_longitude = float('nan')
+    else:
+        time_to_longitude = phase_angle / 360 * period
+    return time_to_longitude
+
 def Hohmann_nodes(target_altitude,start_time):
     # parameters, assuming circular orbits
     mu = vessel.orbit.body.gravitational_parameter
