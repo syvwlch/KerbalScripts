@@ -79,8 +79,7 @@ def check_initial_orbit(maximum_eccentricity=0.01,require_click=True):
 def Hohmann_phase_angle(a1,a2):
     return 180 - 90 * sqrt(pow((a1+a2)/a2,3)/2)
 
-def time_to_phase(phase1, phase2, period1, period2):
-    phase_angle = phase1 - phase2
+def time_to_phase(phase_angle, period1, period2):
     if period1 == period2:
         return float('nan')
     else:
@@ -101,10 +100,10 @@ def time_to_phase(phase1, phase2, period1, period2):
 def time_to_longitude(target_longitude):
     # assumes circular, equatorial orbit
     # assumes orbit rotates faster than body being orbited
-    return time_to_phase(   vessel.flight(vessel.orbit.body.reference_frame).longitude,
-                            target_longitude,
-                            vessel.orbit.period,
-                            vessel.orbit.body.rotational_period)
+    return time_to_phase(
+        vessel.flight(vessel.orbit.body.reference_frame).longitude - target_longitude,
+        vessel.orbit.period,
+        vessel.orbit.body.rotational_period)
 
 def Hohmann_nodes(target_altitude,start_time):
     # parameters, assuming circular orbits
