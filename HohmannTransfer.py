@@ -130,7 +130,10 @@ def Keostationary(longitude):
     a1 = vessel.orbit.semi_major_axis
     a2 = 2863330 + vessel.orbit.body.equatorial_radius
     target_longitude = longitude - Hohmann_phase_angle(a1,a2)
-    Hohmann_nodes(2863330, ut() + time_to_longitude(target_longitude))
+    Hohmann_nodes(
+        2863330,
+        ut() + time_to_longitude(target_longitude))
+    return
     return
 
 def goodbye():
