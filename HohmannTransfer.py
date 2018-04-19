@@ -106,6 +106,7 @@ def Hohmann_nodes(target_altitude,start_time):
     dv1 = sqrt(mu/a1)*(sqrt(2*a2/(a1+a2))-1)
     node1 = vessel.control.add_node(start_time, prograde=dv1)
     # setting up second maneuver
+    # measuring, rather than calculating
     if dv1 > 0:
         transfer_time = node1.orbit.time_to_apoapsis
     else:
@@ -113,18 +114,19 @@ def Hohmann_nodes(target_altitude,start_time):
     dv2 = sqrt(mu/a2)*(1-sqrt(2*a1/(a1+a2)))
     node2 = vessel.control.add_node(start_time + transfer_time, prograde=dv2)
     nodes = (node1, node2)
-    update_UI('Phase angle change: %d' % (Hohmann_phase_angle(a1,a2) % 360))
     return nodes
 
 def Keostationary(longitude):
+    # hardcoded for Kerbin
+    # calculate for current orbit body in future?
     a1 = vessel.orbit.semi_major_axis
     a2 = 2863330 + vessel.orbit.body.equatorial_radius
-    target_longitude = (longitude - Hohmann_phase_angle(a1,a2) + 360) % 360
+    target_longitude = longitude - Hohmann_phase_angle(a1,a2)
     Hohmann_nodes(2863330, ut() + time_to_longitude(target_longitude))
     return
 
 def goodbye():
-    # update_UI('Nodes added. Burn safe!')
+    update_UI('Nodes added. Burn safe!')
     time.sleep(3)
     return
 
