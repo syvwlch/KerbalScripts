@@ -105,6 +105,15 @@ def time_to_longitude(target_longitude):
         vessel.orbit.period,
         vessel.orbit.body.rotational_period)
 
+def time_to_target_phase(target_phase):
+    # assumes there is a target selected, and that it orbits the same body
+    rf = vessel.orbit.body.reference_frame
+    target = conn.space_center.target_vessel
+    return time_to_phase(
+        vessel.flight(rf).longitude - target.flight(rf).longitude - target_phase,
+        vessel.orbit.period,
+        target.orbit.period)
+
 def Hohmann_nodes(target_altitude,start_time):
     # parameters, assuming circular orbits
     mu = vessel.orbit.body.gravitational_parameter
@@ -134,6 +143,15 @@ def Keostationary(longitude):
         2863330,
         ut() + time_to_longitude(target_longitude))
     return
+
+def rendez_vous():
+    # assumes there is a target selected, and that it orbits the same body
+    target = conn.space_center.target_vessel
+    a1 = vessel.orbit.semi_major_axis
+    a2 = target.orbit.semi_major_axis
+    Hohmann_nodes(
+        target.orbit.apoapsis_altitude,
+        ut() + time_to_target_phase(-Hohmann_phase_angle(a1,a2)))
     return
 
 def goodbye():
@@ -146,6 +164,7 @@ if __name__ == "__main__":
 
     check_initial_orbit()
 
-    Keostationary(285.425) # right over the KSC
+    #Keostationary(285.425) # right over the KSC
+    rendez_vous() # needs a target set first!
 
     goodbye()
