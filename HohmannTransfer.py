@@ -76,17 +76,8 @@ def check_initial_orbit(maximum_eccentricity=0.01,require_click=True):
         button.remove()
     return
 
-def Hohmann_transfer_time(a1,a2):
-    mu = vessel.orbit.body.gravitational_parameter
-    transfer_time = pi*sqrt(pow(a1+a2,3)/(8*mu))
-    return transfer_time
-
 def Hohmann_phase_angle(a1,a2):
-    mu = vessel.orbit.body.gravitational_parameter
-    transfer_time = Hohmann_transfer_time(a1,a2)
-    period = 2 * pi * sqrt(pow(a2,3)/mu)
-    phase_angle = 180 - 360 * transfer_time / period
-    return phase_angle
+    return 180 - 90 * sqrt(pow((a1+a2)/a2,3)/2)
 
 def time_to_longitude(target_longitude):
     # assumes circular, equatorial orbit
