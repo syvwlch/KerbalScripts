@@ -164,7 +164,8 @@ if __name__ == "__main__":
 
     check_initial_orbit()
 
-    #Keostationary(285.425) # right over the KSC
-    rendez_vous() # needs a target set first!
+    Keostationary(285.425) # right over the KSC
+    #rendez_vous() # needs a target set first!
+    #Hohmann_nodes(6060829,ut()+60*13)
 
     goodbye()
