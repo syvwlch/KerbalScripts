@@ -81,6 +81,11 @@ def execute_node(node):
     flow_rate = F / Isp
     burn_time = (m0 - m1) / flow_rate
 
+    # setting a max throttle to keep burn time above minimum
+    burn_time_min = 4
+    throttle_max = min(1,burn_time/burn_time_min)
+    burn_time = max(burn_time,burn_time_min)
+
     # point to maneuver
     update_UI('Aligning to burn')
     ap.reference_frame = node.reference_frame
@@ -92,32 +97,42 @@ def execute_node(node):
 
     # warp to burn
     burn_ut =  node.ut - (burn_time/2.)
-    lead_time = 5
+    lead_time = 10 # see if you can estimate how long it would take to align
     if ut() < burn_ut - lead_time:
         update_UI('Warping to node')
         conn.space_center.warp_to(burn_ut - lead_time)
     while ut() < burn_ut :
         pass
 
-    # executing 98% of node dV
+    # executing node
+    # obeys throttle_max to help with smaller maneuvers
     # abortable
     # auto-aborts if autopilot heading error exceeds 20 degrees
+    # throttles down linearly for last 20% of dV
     update_UI('Executing burn')
     remaining_burn = conn.add_stream(node.remaining_burn_vector, node.reference_frame)
-    vessel.control.throttle = 1.0
+    vessel.control.throttle = throttle_max
     button = panel.add_button("Abort")
     button.rect_transform.size=(100,30)
     button.rect_transform.position = (135, -20)
     button_clicked = conn.add_stream(getattr, button, 'clicked')
+    delta_v_finetuning = delta_v * 0.2
     while True:
-        if button_clicked() or ap.error > 20:
+        vessel.control.throttle = throttle_max * min(
+                                    1,
+                                    remaining_burn()[1]/delta_v_finetuning)
+        if ap.error > 20:
+            update_UI('Auto-abort!!!')
             abort = True
-        if remaining_burn()[1] < delta_v * 0.02:
-            update_UI('Fine tuning burn')
-            vessel.control.throttle = 0.05
-        if remaining_burn()[1] < delta_v * 0.001 or abort:
             break
-        time.sleep(0.1)
+        if button_clicked():
+            update_UI('Manual-abort!!!')
+            abort = True
+            break
+        if remaining_burn()[1] < 0.04:
+            update_UI('Burn complete')
+            break
+        time.sleep(0.01)
     vessel.control.throttle = 0.0
 
     # remove the abort button
