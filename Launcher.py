@@ -106,12 +106,21 @@ def ascent_angle(altitude):
 def ascent():
     update_UI('Gravity turn')
     turn_angle = 90
+    thrust = vessel.available_thrust
     while True:
         # ascent profile
         new_turn_angle = ascent_angle(altitude())
         if abs(new_turn_angle - turn_angle) > 0.5:
             turn_angle = new_turn_angle
             ap.target_pitch = turn_angle
+
+        if vessel.available_thrust < 0.9 * thrust:
+            vessel.control.throttle = 0.0
+            time.sleep(0.5)
+            vessel.control.activate_next_stage()
+            time.sleep(0.5)
+            vessel.control.throttle = 1.0
+            thrust = vessel.available_thrust
 
         # break out when reaching target apoapsis
         if apoapsis() > target_altitude:
