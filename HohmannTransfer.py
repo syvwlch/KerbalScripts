@@ -99,7 +99,6 @@ def time_to_phase(phase_angle, period1, period2):
 
 def time_to_longitude(target_longitude):
     # assumes circular, equatorial orbit
-    # assumes orbit rotates faster than body being orbited
     return time_to_phase(
         vessel.flight(vessel.orbit.body.reference_frame).longitude - target_longitude,
         vessel.orbit.period,
