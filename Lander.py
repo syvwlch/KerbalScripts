@@ -140,7 +140,7 @@ def goodbye():
 if __name__ == "__main__":
   hold_for_click()
 
-  pop_up_a_bit(final_descent_altitude)
+  # pop_up_a_bit(final_descent_altitude)
 
   touch_down(final_descent_speed)
 
