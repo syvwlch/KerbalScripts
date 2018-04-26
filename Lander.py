@@ -44,13 +44,13 @@ vessel = conn.space_center.active_vessel
 ap = vessel.auto_pilot
 
 # setting up variables
-initial_ascent_angle =30 # degrees off vertical
+initial_ascent_angle = 30 # degrees off vertical
 final_descent_altitude = 50 # final descent start altitude in meters
 final_descent_speed = 4 # meters/second
 
 # setting up streams
 ut = conn.add_stream(getattr, conn.space_center, 'ut')
-altitude = conn.add_stream(getattr, vessel.flight(), 'mean_altitude')
+altitude = conn.add_stream(getattr, vessel.flight(), 'surface_altitude')
 vertical_speed = conn.add_stream(
   getattr, vessel.flight(vessel.orbit.body.reference_frame), 'vertical_speed'
 )
@@ -87,15 +87,15 @@ def pop_up_a_bit(target_altitude):
   ap.target_roll=float('nan')
   ap.engage()
 
-  # set target altitude relative to altitude before lift off
-  target_altitude = altitude() + target_altitude
+  # record altitude before lift off
+  liftoff_altitude = apoapsis()
 
   # lift off
   vessel.control.throttle = 1.0
   vessel.control.activate_next_stage()
 
   # MECO when ballistic arc will exceed target altitude
-  while apoapsis() < target_altitude:
+  while apoapsis() < liftoff_altitude + target_altitude:
     time.sleep(0.1)
   vessel.control.throttle = 0.0
 
@@ -113,7 +113,6 @@ def touch_down(final_descent_speed):
   # p = PID(P=.25, I=0.25, D=0.025)
   p = PID(P=.25, I=0.25, D=0.025)
   # p.ClampI = 20
-  p.setpoint(-final_descent_speed)
 
   # let's try to stay pointing up
   vessel.control.sas = True
@@ -122,6 +121,7 @@ def touch_down(final_descent_speed):
 
 #  descent loop
   while vessel.situation is not vessel.situation.landed:
+    p.setpoint(-max(0,altitude()-5)/2.5 - final_descent_speed)
     the_pids_output=p.update(vertical_speed())
     vessel.control.throttle=the_pids_output
     update_UI('Vertical V:{:03.2f}   PID returns:{:03.2f}   Throttle:{:03.2f}'
@@ -140,7 +140,7 @@ def goodbye():
 if __name__ == "__main__":
   hold_for_click()
 
-  # pop_up_a_bit(final_descent_altitude)
+  pop_up_a_bit(final_descent_altitude)
 
   touch_down(final_descent_speed)
 
