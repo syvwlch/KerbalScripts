@@ -12,11 +12,19 @@ import krpc
 
 # Set up the logger
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-formatter = logging.Formatter('%(levelname)s:%(name)s:%(message)s')
+logger.setLevel(logging.DEBUG)
+
 file_handler = logging.FileHandler('HohmannTransfer.log')
-file_handler.setFormatter(formatter)
+file_handler.setLevel(logging.ERROR)
+file_formatter = logging.Formatter('%(levelname)s:%(name)s:%(message)s')
+file_handler.setFormatter(file_formatter)
 logger.addHandler(file_handler)
+
+stream_handler = logging.StreamHandler()
+stream_handler.setLevel(logging.INFO)
+stream_formatter = logging.Formatter('%(message)s')
+stream_handler.setFormatter(stream_formatter)
+logger.addHandler(stream_handler)
 
 # Connect to krpc server
 conn = krpc.connect(name='Hohmann Transfer')
@@ -50,8 +58,7 @@ text.size = 18
 
 
 def update_UI(message='...'):
-    """Update terminal, UI * log with message at the same time."""
-    print(message)
+    """Update UI & log with message at the same time."""
     text.content = message
     logger.info('UI showed: ' + message)
     return
@@ -210,10 +217,13 @@ def goodbye():
 # main loop
 if __name__ == "__main__":
 
+    logger.info('Running HohmannTransfer as __main__.')
+
     check_initial_orbit()
 
     Keostationary(285.425)  # 285.425 is right over the KSC
     # rendez_vous()  # needs a target set first!
-    # Hohmann_nodes(6060829,ut()+60*13)
 
     goodbye()
+
+    logger.info('End of __main__.')
