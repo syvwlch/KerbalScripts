@@ -10,21 +10,28 @@ from math import sqrt, pow
 import time
 import krpc
 
-# Set up the logger
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
 
-file_handler = logging.FileHandler('HohmannTransfer.log')
-file_handler.setLevel(logging.ERROR)
-file_formatter = logging.Formatter('%(levelname)s:%(name)s:%(message)s')
-file_handler.setFormatter(file_formatter)
-logger.addHandler(file_handler)
+def set_up_logger(log_filename):
+    """Set up the logger."""
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
 
-stream_handler = logging.StreamHandler()
-stream_handler.setLevel(logging.INFO)
-stream_formatter = logging.Formatter('%(message)s')
-stream_handler.setFormatter(stream_formatter)
-logger.addHandler(stream_handler)
+    file_handler = logging.FileHandler(log_filename)
+    file_handler.setLevel(logging.ERROR)
+    file_formatter = logging.Formatter('%(levelname)s:%(name)s:%(message)s')
+    file_handler.setFormatter(file_formatter)
+    logger.addHandler(file_handler)
+
+    stream_handler = logging.StreamHandler()
+    stream_handler.setLevel(logging.INFO)
+    stream_formatter = logging.Formatter('%(message)s')
+    stream_handler.setFormatter(stream_formatter)
+    logger.addHandler(stream_handler)
+
+    return logger
+
+
+logger = set_up_logger('HohmannTransfer.log')
 
 # Connect to krpc server
 conn = krpc.connect(name='Hohmann Transfer')
