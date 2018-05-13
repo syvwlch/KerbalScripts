@@ -10,9 +10,15 @@ from math import sqrt, pow
 import time
 import krpc
 
-logging.basicConfig(filename='HohmannTransfer.log', level=logging.INFO,
-                    format='%(levelname)s:%(message)s')
+# Set up the logger
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+formatter = logging.Formatter('%(levelname)s:%(name)s:%(message)s')
+file_handler = logging.FileHandler('HohmannTransfer.log')
+file_handler.setFormatter(formatter)
+logger.addHandler(file_handler)
 
+# Connect to krpc server
 conn = krpc.connect(name='Hohmann Transfer')
 
 # Set up the UI
@@ -47,7 +53,7 @@ def update_UI(message='...'):
     """Update terminal, UI * log with message at the same time."""
     print(message)
     text.content = message
-    logging.info('UI showed: ' + message)
+    logger.info('UI showed: ' + message)
     return
 
 
@@ -82,7 +88,7 @@ def check_initial_orbit(maximum_eccentricity=0.01, require_click=True):
         while True:
             if button_clicked():
                 button.clicked = False
-                logging.info('User clicked the button.')
+                logger.info('User clicked the button.')
                 break
             time.sleep(0.1)
         button.remove()
