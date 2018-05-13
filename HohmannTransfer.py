@@ -80,7 +80,7 @@ def time_to_target_phase(target_phase):
         target.orbit.period)
 
 
-def Hohmann_nodes(target_altitude, start_time):
+def hohmann_nodes(target_altitude, start_time):
     """Set up a Hohmann Transfer's two maneuver nodes.
 
     Add two nodes to the current vessel's flight plan,
@@ -106,7 +106,7 @@ def Hohmann_nodes(target_altitude, start_time):
     return
 
 
-def Keostationary(longitude=KSC_LONGITUDE,
+def keostationary(longitude=KSC_LONGITUDE,
                   synchronous_altitude=KERBIN_SYNCHRONOUS_ALTITUDE):
     """Set up a Hohmann transfer to Keostationary orbit.
 
@@ -118,7 +118,7 @@ def Keostationary(longitude=KSC_LONGITUDE,
     a2 = synchronous_altitude + vessel.orbit.body.equatorial_radius
     target_longitude = longitude - Hohmann_phase_angle(a1, a2)
     logger.info('Keostationary transfer calculated.')
-    Hohmann_nodes(
+    hohmann_nodes(
         synchronous_altitude,
         conn.space_center.ut + time_to_longitude(target_longitude))
     return
@@ -135,7 +135,7 @@ def rendez_vous():
     a2 = target.orbit.semi_major_axis
     time_to_transfer = time_to_target_phase(-Hohmann_phase_angle(a1, a2))
     logger.info('Rendez-vous transfer calculated.')
-    Hohmann_nodes(
+    hohmann_nodes(
         target.orbit.apoapsis_altitude,
         conn.space_center.ut + time_to_transfer)
     return
@@ -148,7 +148,7 @@ if __name__ == "__main__":
 
     if check_initial_orbit():
         if conn.space_center.target_vessel is None:
-            Keostationary()
+            keostationary()
         else:
             rendez_vous()
 
