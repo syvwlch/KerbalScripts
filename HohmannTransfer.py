@@ -1,8 +1,9 @@
-# This adds two nodes for a Hohmann transfer maneuver
-# Currently assumes circular orbits, especially at the start!
+"""
+This adds two nodes for a Hohmann transfer maneuver
+Currently assumes circular orbits, especially at the start!
 
-# Nodes can be execute manually or with Node Executor script
-# running in parallel
+Nodes can be execute manually or with Node Executor script running in parallel
+"""
 
 from math import sqrt, pi, pow
 import time
@@ -35,10 +36,9 @@ text.rect_transform.position = (0, +20)
 text.color = (1, 1, 1)
 text.size = 18
 
-# defining a display function to update terminal & UI at the same time
-
 
 def update_UI(message='...'):
+    """Update terminal & UI with message at the same time."""
     print(message)
     text.content = message
     return
@@ -57,7 +57,7 @@ apoapsis = conn.add_stream(getattr, vessel.orbit, 'apoapsis_altitude')
 
 
 def check_initial_orbit(maximum_eccentricity=0.01, require_click=True):
-    # check how circular our current orbit is
+    """Check how circular the current orbit is, and then wait for click."""
     if vessel.orbit.eccentricity > maximum_eccentricity:
         update_UI('Please circularize first!')
         while True:
@@ -82,10 +82,12 @@ def check_initial_orbit(maximum_eccentricity=0.01, require_click=True):
 
 
 def Hohmann_phase_angle(a1, a2):
+    """Calculate the phase angle change during a Hohmann maneuver."""
     return 180 - 90 * sqrt(pow((a1+a2)/a2, 3)/2)
 
 
 def time_to_phase(phase_angle, period1, period2):
+    """Calculate how long to wait for a particular phase angle change."""
     if period1 == period2:
         return float('nan')
     else:
@@ -105,7 +107,8 @@ def time_to_phase(phase_angle, period1, period2):
 
 
 def time_to_longitude(target_longitude):
-    # assumes circular, equatorial orbit
+    """Calculate time to reach a certain longitude,
+    assuming a circular, equatorial orbit"""
     return time_to_phase(
         vessel.flight(vessel.orbit.body.reference_frame).longitude - target_longitude,
         vessel.orbit.period,
@@ -113,7 +116,8 @@ def time_to_longitude(target_longitude):
 
 
 def time_to_target_phase(target_phase):
-    # assumes there is a target selected, and that it orbits the same body
+    """Calculate time to reach a certain phase angle with the target,
+    assuming there is a target selected, and that it orbits the same body"""
     rf = vessel.orbit.body.reference_frame
     target = conn.space_center.target_vessel
     return time_to_phase(
@@ -123,7 +127,9 @@ def time_to_target_phase(target_phase):
 
 
 def Hohmann_nodes(target_altitude, start_time):
-    # parameters, assuming circular orbits
+    """Add two nodes to the current vessel's flight plan,
+    to set up a Hohmann maneuver for a given altitude,
+    starting at a give future time, and assuming circular orbits."""
     mu = vessel.orbit.body.gravitational_parameter
     a1 = vessel.orbit.semi_major_axis
     a2 = target_altitude + vessel.orbit.body.equatorial_radius
@@ -143,8 +149,9 @@ def Hohmann_nodes(target_altitude, start_time):
 
 
 def Keostationary(longitude):
-    # hardcoded for Kerbin
-    # calculate for current orbit body in future?
+    """Set up a Hohmann maneuver, to put current vessel
+    in Keostationary orbit around Kerbin.
+    Currently hardcoded for Kerbin's syncronous orbit altitude."""
     a1 = vessel.orbit.semi_major_axis
     a2 = 2863330 + vessel.orbit.body.equatorial_radius
     target_longitude = longitude - Hohmann_phase_angle(a1, a2)
@@ -155,7 +162,8 @@ def Keostationary(longitude):
 
 
 def rendez_vous():
-    # assumes there is a target selected, and that it orbits the same body
+    """Set up a Hohmann maneuver, to rendez-vous current vessel with current target.
+    Assumes there is a target selected, and that it orbits the same body."""
     target = conn.space_center.target_vessel
     a1 = vessel.orbit.semi_major_axis
     a2 = target.orbit.semi_major_axis
@@ -166,6 +174,7 @@ def rendez_vous():
 
 
 def goodbye():
+    """End script politely."""
     update_UI('Nodes added. Burn safe!')
     time.sleep(3)
     return
