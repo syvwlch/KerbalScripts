@@ -36,10 +36,13 @@ text.color = (1, 1, 1)
 text.size = 18
 
 # defining a display function to update terminal & UI at the same time
+
+
 def update_UI(message='...'):
     print(message)
     text.content = message
     return
+
 
 vessel = conn.space_center.active_vessel
 ap = vessel.auto_pilot
@@ -52,12 +55,13 @@ ut = conn.add_stream(getattr, conn.space_center, 'ut')
 altitude = conn.add_stream(getattr, vessel.flight(), 'mean_altitude')
 apoapsis = conn.add_stream(getattr, vessel.orbit, 'apoapsis_altitude')
 
-def check_initial_orbit(maximum_eccentricity=0.01,require_click=True):
+
+def check_initial_orbit(maximum_eccentricity=0.01, require_click=True):
     # check how circular our current orbit is
-    if vessel.orbit.eccentricity > maximum_eccentricity :
+    if vessel.orbit.eccentricity > maximum_eccentricity:
         update_UI('Please circularize first!')
         while True:
-            if vessel.orbit.eccentricity <= maximum_eccentricity :
+            if vessel.orbit.eccentricity <= maximum_eccentricity:
                 break
             time.sleep(0.1)
 
@@ -65,7 +69,7 @@ def check_initial_orbit(maximum_eccentricity=0.01,require_click=True):
     if require_click:
         update_UI('Click to add nodes')
         button = panel.add_button("Add Nodes")
-        button.rect_transform.size=(100,30)
+        button.rect_transform.size = (100, 30)
         button.rect_transform.position = (135, -20)
         button_clicked = conn.add_stream(getattr, button, 'clicked')
         while True:
@@ -76,8 +80,10 @@ def check_initial_orbit(maximum_eccentricity=0.01,require_click=True):
         button.remove()
     return
 
-def Hohmann_phase_angle(a1,a2):
-    return 180 - 90 * sqrt(pow((a1+a2)/a2,3)/2)
+
+def Hohmann_phase_angle(a1, a2):
+    return 180 - 90 * sqrt(pow((a1+a2)/a2, 3)/2)
+
 
 def time_to_phase(phase_angle, period1, period2):
     if period1 == period2:
@@ -97,12 +103,14 @@ def time_to_phase(phase_angle, period1, period2):
         time = time - abs(period)
     return time
 
+
 def time_to_longitude(target_longitude):
     # assumes circular, equatorial orbit
     return time_to_phase(
         vessel.flight(vessel.orbit.body.reference_frame).longitude - target_longitude,
         vessel.orbit.period,
         vessel.orbit.body.rotational_period)
+
 
 def time_to_target_phase(target_phase):
     # assumes there is a target selected, and that it orbits the same body
@@ -113,7 +121,8 @@ def time_to_target_phase(target_phase):
         vessel.orbit.period,
         target.orbit.period)
 
-def Hohmann_nodes(target_altitude,start_time):
+
+def Hohmann_nodes(target_altitude, start_time):
     # parameters, assuming circular orbits
     mu = vessel.orbit.body.gravitational_parameter
     a1 = vessel.orbit.semi_major_axis
@@ -132,16 +141,18 @@ def Hohmann_nodes(target_altitude,start_time):
     nodes = (node1, node2)
     return nodes
 
+
 def Keostationary(longitude):
     # hardcoded for Kerbin
     # calculate for current orbit body in future?
     a1 = vessel.orbit.semi_major_axis
     a2 = 2863330 + vessel.orbit.body.equatorial_radius
-    target_longitude = longitude - Hohmann_phase_angle(a1,a2)
+    target_longitude = longitude - Hohmann_phase_angle(a1, a2)
     Hohmann_nodes(
         2863330,
         ut() + time_to_longitude(target_longitude))
     return
+
 
 def rendez_vous():
     # assumes there is a target selected, and that it orbits the same body
@@ -150,21 +161,23 @@ def rendez_vous():
     a2 = target.orbit.semi_major_axis
     Hohmann_nodes(
         target.orbit.apoapsis_altitude,
-        ut() + time_to_target_phase(-Hohmann_phase_angle(a1,a2)))
+        ut() + time_to_target_phase(-Hohmann_phase_angle(a1, a2)))
     return
+
 
 def goodbye():
     update_UI('Nodes added. Burn safe!')
     time.sleep(3)
     return
 
+
 # main loop
 if __name__ == "__main__":
 
     check_initial_orbit()
 
-    Keostationary(285.425) # right over the KSC
-    #rendez_vous() # needs a target set first!
-    #Hohmann_nodes(6060829,ut()+60*13)
+    Keostationary(285.425)  # right over the KSC
+    # rendez_vous() # needs a target set first!
+    # Hohmann_nodes(6060829,ut()+60*13)
 
     goodbye()

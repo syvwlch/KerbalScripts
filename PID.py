@@ -1,18 +1,19 @@
 ##############################################################################
-### PID Controller Library and Example
+# PID Controller Library and Example
 ##############################################################################
-###   Shamelessly 'inspired' by Art Whaley's KRPC demos
+# Shamelessly 'inspired' by Art Whaley's KRPC demos
 ###
-###   This file includes a simple and generic PID controller that we use in
-###   many of the other examples when we want to smoothly control one value
-###   based on our measurement of another.  The PID class docstring explains
-###   the basics of using it in your project.   The demo code below that
-###   shows how to use the PID controller to hold a vertical velocity with
-###   variation of engine thrust.
+# This file includes a simple and generic PID controller that we use in
+# many of the other examples when we want to smoothly control one value
+# based on our measurement of another.  The PID class docstring explains
+# the basics of using it in your project.   The demo code below that
+# shows how to use the PID controller to hold a vertical velocity with
+# variation of engine thrust.
 ##############################################################################
 
 import time
 import krpc
+
 
 class PID(object):
     '''
@@ -41,22 +42,22 @@ class PID(object):
     '''
 
     def __init__(self, P=1.0, I=0.1, D=0.01):
-        self.Kp = P    #P controls reaction to the instantaneous error
-        self.Ki = I    #I controls reaction to the history of error
-        self.Kd = D    #D prevents overshoot by considering rate of change
+        self.Kp = P  # P controls reaction to the instantaneous error
+        self.Ki = I  # I controls reaction to the history of error
+        self.Kd = D  # D prevents overshoot by considering rate of change
         self.P = 0.0
         self.I = 0.0
         self.D = 0.0
-        self.SetPoint = 0.0  #Target value for controller
-        self.ClampI = 1.0  #clamps i_term to prevent 'windup.'
+        self.SetPoint = 0.0  # Target value for controller
+        self.ClampI = 1.0  # clamps i_term to prevent 'windup.'
         self.LastTime = time.time()
         self.LastMeasure = 0.0
 
-    def update(self,measure):
+    def update(self, measure):
         now = time.time()
         change_in_time = now - self.LastTime
         if not change_in_time:
-            change_in_time = 1.0   #avoid potential divide by zero if PID just created.
+            change_in_time = 1.0  # avoid potential divide by zero if PID just created.
 
         error = self.SetPoint - measure
         self.P = error
@@ -82,17 +83,20 @@ class PID(object):
         self.I = 0.0
 
 ##############################################################################
-## Demo Code Below This Line!
+# Demo Code Below This Line!
 ##############################################################################
+
 
 Target_Velocity = 5   # The value we're trying to limit ourselves to
 
 ##############################################################################
-## Main  -- only run when we execute this file directly.
-##          ignored when we import the PID into other files!
+# Main  -- only run when we execute this file directly.
+# ignored when we import the PID into other files!
 ##############################################################################
+
+
 def main():
-    #Setup KRPC
+    # Setup KRPC
     conn = krpc.connect()
     sc = conn.space_center
     v = sc.active_vessel
@@ -111,14 +115,13 @@ def main():
 
 #  Loop Forever, or until you get the point of this example and stop it.
     while True:
-        the_pids_output=p.update(telem.vertical_speed)
-        v.control.throttle=the_pids_output
+        the_pids_output = p.update(telem.vertical_speed)
+        v.control.throttle = the_pids_output
         print('Vertical V:{:03.2f}   PID returns:{:03.2f}   Throttle:{:03.2f}'
               .format(telem.vertical_speed,
                       the_pids_output,
                       v.control.throttle))
         time.sleep(.1)
-
 
 
 if __name__ == '__main__':

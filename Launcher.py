@@ -35,10 +35,13 @@ text.color = (1, 1, 1)
 text.size = 18
 
 # defining a display function to update terminal & UI at the same time
+
+
 def update_UI(message='...'):
     print(message)
     text.content = message
     return
+
 
 vessel = conn.space_center.active_vessel
 ap = vessel.auto_pilot
@@ -55,12 +58,13 @@ ut = conn.add_stream(getattr, conn.space_center, 'ut')
 altitude = conn.add_stream(getattr, vessel.flight(), 'mean_altitude')
 apoapsis = conn.add_stream(getattr, vessel.orbit, 'apoapsis_altitude')
 
+
 def hold_for_click(require_click=True):
     # wait button click to launch
     if require_click:
         update_UI('Click to launch')
         button = panel.add_button("Launch")
-        button.rect_transform.size=(100,30)
+        button.rect_transform.size = (100, 30)
         button.rect_transform.position = (135, -20)
         button_clicked = conn.add_stream(getattr, button, 'clicked')
         while True:
@@ -71,6 +75,7 @@ def hold_for_click(require_click=True):
         button.remove()
     return
 
+
 def ignition():
     # Pre-ignition setup
     vessel.control.sas = False
@@ -79,18 +84,19 @@ def ignition():
     time.sleep(1)
 
     # setting up autopilot
-    ap.time_to_peak=(5,10,5)
-    ap.overshoot=(0.005,0.010,0.005)
+    ap.time_to_peak = (5, 10, 5)
+    ap.overshoot = (0.005, 0.010, 0.005)
     ap.reference_frame = vessel.surface_reference_frame
-    ap.target_pitch=90
-    ap.target_heading=90-target_inclination
-    ap.target_roll=180
+    ap.target_pitch = 90
+    ap.target_heading = 90-target_inclination
+    ap.target_roll = 180
     ap.engage()
 
     # releasing clamps & igniting first stage
     vessel.control.activate_next_stage()
     update_UI('Ignition')
     return
+
 
 def ascent_angle(altitude):
     if altitude > turn_start_altitude and altitude < turn_end_altitude:
@@ -102,6 +108,7 @@ def ascent_angle(altitude):
     else:
         turn_angle = 90
     return turn_angle
+
 
 def ascent():
     update_UI('Gravity turn')
@@ -129,6 +136,7 @@ def ascent():
             break
     return
 
+
 def circularization():
     # setting up circulization maneuver
     mu = vessel.orbit.body.gravitational_parameter
@@ -142,10 +150,12 @@ def circularization():
         ut() + vessel.orbit.time_to_apoapsis, prograde=delta_v)
     return node
 
+
 def goodbye():
     update_UI('Enjoy your orbit!')
     time.sleep(3)
     return
+
 
 # main loop
 if __name__ == "__main__":
