@@ -8,12 +8,12 @@ import time
 from PID import PID
 import InitialSetUp
 
-MODULE_HANDLE = 'HohmannTransfer'
+MODULE_HANDLE = 'Lander'
 
 logger = InitialSetUp.set_up_logger(MODULE_HANDLE + '.log')
 conn = InitialSetUp.connect_to_krpc_server(MODULE_HANDLE)
 
-# setting up variables
+# setting up constants
 INITIAL_ASCENT_ANGLE = 30  # degrees off vertical
 FINAL_DESCENT_ALTITUDE = 50  # final descent start altitude in meters
 FINAL_DESCENT_SPEED = 4  # meters/second
