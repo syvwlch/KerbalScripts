@@ -7,7 +7,7 @@ Nodes can be execute manually or with Node Executor script running in parallel.
 
 import logging
 from math import sqrt, pow
-import time
+#  import time
 import krpc
 
 
@@ -31,82 +31,25 @@ def set_up_logger(log_filename):
     return logger
 
 
-logger = set_up_logger('HohmannTransfer.log')
-
-# Connect to krpc server
-conn = krpc.connect(name='Hohmann Transfer')
-
-# Set up the UI
-canvas = conn.ui.stock_canvas
-
-# Get the size of the game window in pixels
-screen_size = canvas.rect_transform.size
-
-# Add a panel to contain the UI elements
-panel = canvas.add_panel()
-
-# Position the panel relative to the center of the screen
-rect = panel.rect_transform
-width = 400
-height = 80
-rect.size = (width, height)
-padding_w = 0
-padding_h = 65
-position_w = + padding_w + width/2 - screen_size[0]/2
-position_h = - padding_h - height/2 + screen_size[1]/2
-rect.position = (position_w, position_h)
-
-# Add some text displaying messages to user
-text = panel.add_text("...")
-text.rect_transform.size = (380, 30)
-text.rect_transform.position = (0, +20)
-text.color = (1, 1, 1)
-text.size = 18
+def connect_to_krpc_server(client_name):
+    """Connect to the krpc server."""
+    conn = krpc.connect(name=client_name)
+    return conn
 
 
-def update_UI(message='...'):
-    """Update UI & log with message at the same time."""
-    text.content = message
-    logger.info('UI showed: ' + message)
-    return
+MODULE_HANDLE = 'HohmannTransfer'
+
+logger = set_up_logger(MODULE_HANDLE + '.log')
+conn = connect_to_krpc_server(MODULE_HANDLE)
 
 
-vessel = conn.space_center.active_vessel
-ap = vessel.auto_pilot
-
-# setting up variables
-
-
-# setting up streams
-ut = conn.add_stream(getattr, conn.space_center, 'ut')
-altitude = conn.add_stream(getattr, vessel.flight(), 'mean_altitude')
-apoapsis = conn.add_stream(getattr, vessel.orbit, 'apoapsis_altitude')
-
-
-def check_initial_orbit(maximum_eccentricity=0.01, require_click=True):
+def check_initial_orbit(maximum_eccentricity=0.01):
     """Check how circular the current orbit is, and then wait for click."""
+    vessel = conn.space_center.active_vessel
     if vessel.orbit.eccentricity > maximum_eccentricity:
-        update_UI('Please circularize first!')
-        while True:
-            if vessel.orbit.eccentricity <= maximum_eccentricity:
-                break
-            time.sleep(0.1)
-
-    # wait button click to add nodes
-    if require_click:
-        update_UI('Click to add nodes')
-        button = panel.add_button("Add Nodes")
-        button.rect_transform.size = (100, 30)
-        button.rect_transform.position = (135, -20)
-        button_clicked = conn.add_stream(getattr, button, 'clicked')
-        while True:
-            if button_clicked():
-                button.clicked = False
-                logger.info('User clicked the button.')
-                break
-            time.sleep(0.1)
-        button.remove()
-    return
+        logger.info('Please circularize first!')
+        return False
+    return True
 
 
 def Hohmann_phase_angle(a1, a2):
@@ -139,6 +82,7 @@ def time_to_longitude(target_longitude):
 
     Assumes a circular, equatorial orbit.
     """
+    vessel = conn.space_center.active_vessel
     rf = vessel.orbit.body.reference_frame
     return time_to_phase(
         vessel.flight(rf).longitude - target_longitude,
@@ -151,6 +95,7 @@ def time_to_target_phase(target_phase):
 
     Assumes there is a target selected, and that it orbits the same body.
     """
+    vessel = conn.space_center.active_vessel
     rf = vessel.orbit.body.reference_frame
     target = conn.space_center.target_vessel
     vessel_longitude = vessel.flight(rf).longitude
@@ -168,6 +113,7 @@ def Hohmann_nodes(target_altitude, start_time):
     to set up a Hohmann transfer for a given altitude,
     starting at a give future time, and assuming circular orbits.
     """
+    vessel = conn.space_center.active_vessel
     mu = vessel.orbit.body.gravitational_parameter
     a1 = vessel.orbit.semi_major_axis
     a2 = target_altitude + vessel.orbit.body.equatorial_radius
@@ -181,9 +127,9 @@ def Hohmann_nodes(target_altitude, start_time):
     else:
         transfer_time = node1.orbit.time_to_periapsis
     dv2 = sqrt(mu/a2)*(1-sqrt(2*a1/(a1+a2)))
-    node2 = vessel.control.add_node(start_time + transfer_time, prograde=dv2)
-    nodes = (node1, node2)
-    return nodes
+    vessel.control.add_node(start_time + transfer_time, prograde=dv2)
+    logger.info('Hohmann transfer nodes added.')
+    return
 
 
 def Keostationary(longitude):
@@ -191,12 +137,14 @@ def Keostationary(longitude):
 
     Currently hardcoded for Kerbin's syncronous orbit altitude.
     """
+    vessel = conn.space_center.active_vessel
     a1 = vessel.orbit.semi_major_axis
     a2 = 2863330 + vessel.orbit.body.equatorial_radius
     target_longitude = longitude - Hohmann_phase_angle(a1, a2)
+    logger.info('Keostationary transfer calculated.')
     Hohmann_nodes(
         2863330,
-        ut() + time_to_longitude(target_longitude))
+        conn.space_center.ut + time_to_longitude(target_longitude))
     return
 
 
@@ -205,19 +153,15 @@ def rendez_vous():
 
     Assumes there is a target selected, and that it orbits the same body.
     """
+    vessel = conn.space_center.active_vessel
     target = conn.space_center.target_vessel
     a1 = vessel.orbit.semi_major_axis
     a2 = target.orbit.semi_major_axis
+    time_to_transfer = time_to_target_phase(-Hohmann_phase_angle(a1, a2))
+    logger.info('Rendez-vous transfer calculated.')
     Hohmann_nodes(
         target.orbit.apoapsis_altitude,
-        ut() + time_to_target_phase(-Hohmann_phase_angle(a1, a2)))
-    return
-
-
-def goodbye():
-    """End script politely."""
-    update_UI('Nodes added. Burn safe!')
-    time.sleep(3)
+        conn.space_center.ut + time_to_transfer)
     return
 
 
@@ -226,11 +170,8 @@ if __name__ == "__main__":
 
     logger.info('Running HohmannTransfer as __main__.')
 
-    check_initial_orbit()
-
-    Keostationary(285.425)  # 285.425 is right over the KSC
-    # rendez_vous()  # needs a target set first!
-
-    goodbye()
+    if check_initial_orbit():
+        Keostationary(285.425)  # 285.425 is right over the KSC
+        # rendez_vous()  # needs a target set first!
 
     logger.info('End of __main__.')
