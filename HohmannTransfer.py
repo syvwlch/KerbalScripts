@@ -11,13 +11,13 @@ import InitialSetUp
 MODULE_HANDLE = 'HohmannTransfer'
 KSC_LONGITUDE = 285.425
 KERBIN_SYNCHRONOUS_ALTITUDE = 2863330
-
+MAXIMUM_ECCENTRICITY = 0.01
 
 logger = InitialSetUp.set_up_logger(MODULE_HANDLE + '.log')
 conn = InitialSetUp.connect_to_krpc_server(MODULE_HANDLE)
 
 
-def check_initial_orbit(maximum_eccentricity=0.01):
+def check_initial_orbit(maximum_eccentricity=MAXIMUM_ECCENTRICITY):
     """Check how circular the current orbit is, and then wait for click."""
     vessel = conn.space_center.active_vessel
     if vessel.orbit.eccentricity > maximum_eccentricity:
@@ -106,8 +106,8 @@ def hohmann_nodes(target_altitude, start_time):
     return
 
 
-def keostationary(longitude=KSC_LONGITUDE,
-                  synchronous_altitude=KERBIN_SYNCHRONOUS_ALTITUDE):
+def keostationary_transfer(longitude=KSC_LONGITUDE,
+                           synchronous_altitude=KERBIN_SYNCHRONOUS_ALTITUDE):
     """Set up a Hohmann transfer to Keostationary orbit.
 
     Takes altitude of synchronous orbit as a parameter, does not calculate it.
@@ -124,7 +124,7 @@ def keostationary(longitude=KSC_LONGITUDE,
     return
 
 
-def rendez_vous():
+def rendez_vous_transfer():
     """Set up a Hohmann maneuver, to rendez-vous with current target.
 
     Assumes there is a target selected, and that it orbits the same body.
@@ -148,8 +148,8 @@ if __name__ == "__main__":
 
     if check_initial_orbit():
         if conn.space_center.target_vessel is None:
-            keostationary()
+            keostationary_transfer()
         else:
-            rendez_vous()
+            rendez_vous_transfer()
 
     logger.info('End of __main__.')
