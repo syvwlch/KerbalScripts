@@ -5,9 +5,13 @@ Currently assumes circular orbits, especially at the start!
 Nodes can be execute manually or with Node Executor script running in parallel.
 """
 
+import logging
 from math import sqrt, pow
 import time
 import krpc
+
+logging.basicConfig(filename='HohmannTransfer.log', level=logging.INFO,
+                    format='%(levelname)s:%(message)s')
 
 conn = krpc.connect(name='Hohmann Transfer')
 
@@ -40,9 +44,10 @@ text.size = 18
 
 
 def update_UI(message='...'):
-    """Update terminal & UI with message at the same time."""
+    """Update terminal, UI * log with message at the same time."""
     print(message)
     text.content = message
+    logging.info('UI showed: ' + message)
     return
 
 
@@ -67,7 +72,7 @@ def check_initial_orbit(maximum_eccentricity=0.01, require_click=True):
                 break
             time.sleep(0.1)
 
-    # wait button click to launch
+    # wait button click to add nodes
     if require_click:
         update_UI('Click to add nodes')
         button = panel.add_button("Add Nodes")
@@ -77,6 +82,7 @@ def check_initial_orbit(maximum_eccentricity=0.01, require_click=True):
         while True:
             if button_clicked():
                 button.clicked = False
+                logging.info('User clicked the button.')
                 break
             time.sleep(0.1)
         button.remove()
