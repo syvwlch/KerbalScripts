@@ -1,11 +1,11 @@
 """
-This adds two nodes for a Hohmann transfer maneuver
-Currently assumes circular orbits, especially at the start!
+This adds two nodes for a Hohmann transfer maneuver.
 
-Nodes can be execute manually or with Node Executor script running in parallel
+Currently assumes circular orbits, especially at the start!
+Nodes can be execute manually or with Node Executor script running in parallel.
 """
 
-from math import sqrt, pi, pow
+from math import sqrt, pow
 import time
 import krpc
 
@@ -24,10 +24,12 @@ panel = canvas.add_panel()
 rect = panel.rect_transform
 width = 400
 height = 80
-padding_w = 0
-Padding_h = 65
 rect.size = (width, height)
-rect.position = (width/2+padding_w-screen_size[0]/2, screen_size[1]/2-(height/2+Padding_h))
+padding_w = 0
+padding_h = 65
+position_w = + padding_w + width/2 - screen_size[0]/2
+position_h = - padding_h - height/2 + screen_size[1]/2
+rect.position = (position_w, position_h)
 
 # Add some text displaying messages to user
 text = panel.add_text("...")
@@ -107,29 +109,39 @@ def time_to_phase(phase_angle, period1, period2):
 
 
 def time_to_longitude(target_longitude):
-    """Calculate time to reach a certain longitude,
-    assuming a circular, equatorial orbit"""
+    """Calculate time to reach a certain longitude.
+
+    Assumes a circular, equatorial orbit.
+    """
+    rf = vessel.orbit.body.reference_frame
     return time_to_phase(
-        vessel.flight(vessel.orbit.body.reference_frame).longitude - target_longitude,
+        vessel.flight(rf).longitude - target_longitude,
         vessel.orbit.period,
         vessel.orbit.body.rotational_period)
 
 
 def time_to_target_phase(target_phase):
-    """Calculate time to reach a certain phase angle with the target,
-    assuming there is a target selected, and that it orbits the same body"""
+    """Calculate time to reach a certain phase angle with the target.
+
+    Assumes there is a target selected, and that it orbits the same body.
+    """
     rf = vessel.orbit.body.reference_frame
     target = conn.space_center.target_vessel
+    vessel_longitude = vessel.flight(rf).longitude
+    target_longitude = target.flight(rf).longitude
     return time_to_phase(
-        vessel.flight(rf).longitude - target.flight(rf).longitude - target_phase,
+        vessel_longitude - target_longitude - target_phase,
         vessel.orbit.period,
         target.orbit.period)
 
 
 def Hohmann_nodes(target_altitude, start_time):
-    """Add two nodes to the current vessel's flight plan,
-    to set up a Hohmann maneuver for a given altitude,
-    starting at a give future time, and assuming circular orbits."""
+    """Set up a Hohmann Transfer's two maneuver nodes.
+
+    Add two nodes to the current vessel's flight plan,
+    to set up a Hohmann transfer for a given altitude,
+    starting at a give future time, and assuming circular orbits.
+    """
     mu = vessel.orbit.body.gravitational_parameter
     a1 = vessel.orbit.semi_major_axis
     a2 = target_altitude + vessel.orbit.body.equatorial_radius
@@ -149,9 +161,10 @@ def Hohmann_nodes(target_altitude, start_time):
 
 
 def Keostationary(longitude):
-    """Set up a Hohmann maneuver, to put current vessel
-    in Keostationary orbit around Kerbin.
-    Currently hardcoded for Kerbin's syncronous orbit altitude."""
+    """Set up a Hohmann transfer to Keostationary orbit.
+
+    Currently hardcoded for Kerbin's syncronous orbit altitude.
+    """
     a1 = vessel.orbit.semi_major_axis
     a2 = 2863330 + vessel.orbit.body.equatorial_radius
     target_longitude = longitude - Hohmann_phase_angle(a1, a2)
@@ -162,8 +175,10 @@ def Keostationary(longitude):
 
 
 def rendez_vous():
-    """Set up a Hohmann maneuver, to rendez-vous current vessel with current target.
-    Assumes there is a target selected, and that it orbits the same body."""
+    """Set up a Hohmann maneuver, to rendez-vous with current target.
+
+    Assumes there is a target selected, and that it orbits the same body.
+    """
     target = conn.space_center.target_vessel
     a1 = vessel.orbit.semi_major_axis
     a2 = target.orbit.semi_major_axis
@@ -185,8 +200,8 @@ if __name__ == "__main__":
 
     check_initial_orbit()
 
-    Keostationary(285.425)  # right over the KSC
-    # rendez_vous() # needs a target set first!
+    Keostationary(285.425)  # 285.425 is right over the KSC
+    # rendez_vous()  # needs a target set first!
     # Hohmann_nodes(6060829,ut()+60*13)
 
     goodbye()
