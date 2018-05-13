@@ -9,9 +9,12 @@ from math import sqrt, pow
 import InitialSetUp
 
 MODULE_HANDLE = 'HohmannTransfer'
+KSC_LONGITUDE = 285.425
+KERBIN_SYNCHRONOUS_ALTITUDE = 2863330
 
-logger = set_up_logger(MODULE_HANDLE + '.log')
-conn = connect_to_krpc_server(MODULE_HANDLE)
+
+logger = InitialSetUp.set_up_logger(MODULE_HANDLE + '.log')
+conn = InitialSetUp.connect_to_krpc_server(MODULE_HANDLE)
 
 
 def check_initial_orbit(maximum_eccentricity=0.01):
@@ -103,18 +106,20 @@ def Hohmann_nodes(target_altitude, start_time):
     return
 
 
-def Keostationary(longitude):
+def Keostationary(longitude=KSC_LONGITUDE,
+                  synchronous_altitude=KERBIN_SYNCHRONOUS_ALTITUDE):
     """Set up a Hohmann transfer to Keostationary orbit.
 
-    Currently hardcoded for Kerbin's syncronous orbit altitude.
+    Takes altitude of synchronous orbit as a parameter, does not calculate it.
+    Defaults to the KSC's longitude.
     """
     vessel = conn.space_center.active_vessel
     a1 = vessel.orbit.semi_major_axis
-    a2 = 2863330 + vessel.orbit.body.equatorial_radius
+    a2 = synchronous_altitude + vessel.orbit.body.equatorial_radius
     target_longitude = longitude - Hohmann_phase_angle(a1, a2)
     logger.info('Keostationary transfer calculated.')
     Hohmann_nodes(
-        2863330,
+        synchronous_altitude,
         conn.space_center.ut + time_to_longitude(target_longitude))
     return
 
@@ -142,7 +147,9 @@ if __name__ == "__main__":
     logger.info('Running HohmannTransfer as __main__.')
 
     if check_initial_orbit():
-        Keostationary(285.425)  # 285.425 is right over the KSC
-        # rendez_vous()  # needs a target set first!
+        if conn.space_center.target_vessel is None:
+            Keostationary()
+        else:
+            rendez_vous()
 
     logger.info('End of __main__.')
