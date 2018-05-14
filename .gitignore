@@ -5,6 +5,7 @@
 # Python generated files #
 ##########################
 __pycache__
+*.pyc
 
 # Script generated files #
 ##########################
