@@ -8,13 +8,19 @@ Nodes can be execute manually or with Node Executor script running in parallel.
 from math import sqrt, pow
 import InitialSetUp
 
+
+#  Logger & server connection setup
 MODULE_HANDLE = 'HohmannTransfer'
+logger = InitialSetUp.set_up_logger(MODULE_HANDLE + '.log')
+#  Only connect to server if not imported.
+if __name__ == "__main__":
+    conn = InitialSetUp.connect_to_krpc_server(MODULE_HANDLE)
+
+
+#  Constants that come in handy during Hohmann transfers.
 KSC_LONGITUDE = 285.425
 KERBIN_SYNCHRONOUS_ALTITUDE = 2863330
 MAXIMUM_ECCENTRICITY = 0.01
-
-logger = InitialSetUp.set_up_logger(MODULE_HANDLE + '.log')
-conn = InitialSetUp.connect_to_krpc_server(MODULE_HANDLE)
 
 
 def check_initial_orbit(maximum_eccentricity=MAXIMUM_ECCENTRICITY):
