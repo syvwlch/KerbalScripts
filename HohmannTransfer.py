@@ -81,6 +81,8 @@ def time_to_target_phase(target_phase):
     vessel = spacecenter.active_vessel
     rf = vessel.orbit.body.reference_frame
     target = spacecenter.target_vessel
+    if target is None:
+        raise ValueError('Tried to calculate phase angle with no target set!')
     vessel_longitude = vessel.flight(rf).longitude
     target_longitude = target.flight(rf).longitude
     return time_to_phase(
