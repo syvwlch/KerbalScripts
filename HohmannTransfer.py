@@ -140,6 +140,8 @@ def rendez_vous_transfer():
     """
     vessel = spacecenter.active_vessel
     target = spacecenter.target_vessel
+    if target is None:
+        raise ValueError('Tried to rendez-vous with no target set!')
     a1 = vessel.orbit.semi_major_axis
     a2 = target.orbit.semi_major_axis
     time_to_transfer = time_to_target_phase(-Hohmann_phase_angle(a1, a2))
