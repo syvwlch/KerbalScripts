@@ -14,8 +14,8 @@ MODULE_HANDLE = 'HohmannTransfer'
 logger = InitialSetUp.set_up_logger(MODULE_HANDLE + '.log')
 #  Only connect to server if not imported.
 if __name__ == "__main__":
-    conn = InitialSetUp.connect_to_krpc_server(MODULE_HANDLE)
-
+    connection = InitialSetUp.connect_to_krpc_server(MODULE_HANDLE)
+    spacecenter = connection.space_center
 
 #  Constants that come in handy during Hohmann transfers.
 KSC_LONGITUDE = 285.425
@@ -25,7 +25,7 @@ MAXIMUM_ECCENTRICITY = 0.01
 
 def check_initial_orbit(maximum_eccentricity=MAXIMUM_ECCENTRICITY):
     """Check how circular the current orbit is, and then wait for click."""
-    vessel = conn.space_center.active_vessel
+    vessel = spacecenter.active_vessel
     if vessel.orbit.eccentricity > maximum_eccentricity:
         logger.info('Please circularize first!')
         return False
@@ -62,7 +62,7 @@ def time_to_longitude(target_longitude):
 
     Assumes a circular, equatorial orbit.
     """
-    vessel = conn.space_center.active_vessel
+    vessel = spacecenter.active_vessel
     rf = vessel.orbit.body.reference_frame
     return time_to_phase(
         vessel.flight(rf).longitude - target_longitude,
@@ -75,9 +75,9 @@ def time_to_target_phase(target_phase):
 
     Assumes there is a target selected, and that it orbits the same body.
     """
-    vessel = conn.space_center.active_vessel
+    vessel = spacecenter.active_vessel
     rf = vessel.orbit.body.reference_frame
-    target = conn.space_center.target_vessel
+    target = spacecenter.target_vessel
     vessel_longitude = vessel.flight(rf).longitude
     target_longitude = target.flight(rf).longitude
     return time_to_phase(
@@ -93,7 +93,7 @@ def hohmann_nodes(target_altitude, start_time):
     to set up a Hohmann transfer for a given altitude,
     starting at a give future time, and assuming circular orbits.
     """
-    vessel = conn.space_center.active_vessel
+    vessel = spacecenter.active_vessel
     mu = vessel.orbit.body.gravitational_parameter
     a1 = vessel.orbit.semi_major_axis
     a2 = target_altitude + vessel.orbit.body.equatorial_radius
@@ -119,14 +119,14 @@ def keostationary_transfer(longitude=KSC_LONGITUDE,
     Takes altitude of synchronous orbit as a parameter, does not calculate it.
     Defaults to the KSC's longitude.
     """
-    vessel = conn.space_center.active_vessel
+    vessel = spacecenter.active_vessel
     a1 = vessel.orbit.semi_major_axis
     a2 = synchronous_altitude + vessel.orbit.body.equatorial_radius
     target_longitude = longitude - Hohmann_phase_angle(a1, a2)
     logger.info('Keostationary transfer calculated.')
     hohmann_nodes(
         synchronous_altitude,
-        conn.space_center.ut + time_to_longitude(target_longitude))
+        spacecenter.ut + time_to_longitude(target_longitude))
     return
 
 
@@ -135,15 +135,15 @@ def rendez_vous_transfer():
 
     Assumes there is a target selected, and that it orbits the same body.
     """
-    vessel = conn.space_center.active_vessel
-    target = conn.space_center.target_vessel
+    vessel = spacecenter.active_vessel
+    target = spacecenter.target_vessel
     a1 = vessel.orbit.semi_major_axis
     a2 = target.orbit.semi_major_axis
     time_to_transfer = time_to_target_phase(-Hohmann_phase_angle(a1, a2))
     logger.info('Rendez-vous transfer calculated.')
     hohmann_nodes(
         target.orbit.apoapsis_altitude,
-        conn.space_center.ut + time_to_transfer)
+        spacecenter.ut + time_to_transfer)
     return
 
 
@@ -153,7 +153,7 @@ if __name__ == "__main__":
     logger.info('Running HohmannTransfer as __main__.')
 
     if check_initial_orbit():
-        if conn.space_center.target_vessel is None:
+        if spacecenter.target_vessel is None:
             keostationary_transfer()
         else:
             rendez_vous_transfer()
