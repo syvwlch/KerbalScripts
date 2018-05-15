@@ -152,15 +152,13 @@ def rendez_vous_transfer():
     return
 
 
-# main loop
+#  If running as __main__ then rdv if there is a target,
+#  or go to Keostationary if not.
 if __name__ == "__main__":
-
     logger.info('Running HohmannTransfer as __main__.')
-
     if check_initial_orbit():
         if spacecenter.target_vessel is None:
             keostationary_transfer()
         else:
             rendez_vous_transfer()
-
     logger.info('End of __main__.')
