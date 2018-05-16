@@ -28,7 +28,7 @@ MAXIMUM_ECCENTRICITY = 0.01
 
 
 def check_initial_orbit(maximum_eccentricity=MAXIMUM_ECCENTRICITY):
-    """Check how circular the current orbit is, and then wait for click."""
+    """Check how circular the current orbit is."""
     vessel = spacecenter.active_vessel
     if vessel.orbit.eccentricity > maximum_eccentricity:
         logger.info('Please circularize first!')
