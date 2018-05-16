@@ -41,23 +41,22 @@ class TestCalculationFunctions(unittest.TestCase):
 
     def test_time_to_phase(self):
         """Test the time before a phase angle is reached."""
-        PHASE_ANGLE = 45
         PERIOD = 1000
 
         with self.assertRaises(ValueError) as context:
-            ht.time_to_phase(PHASE_ANGLE, PERIOD, PERIOD)
+            ht.time_to_phase(33, PERIOD, PERIOD)
         self.assertEqual(
             context.exception.message,
             'Phase angle cannot change when periods are identical!',)
 
         with self.assertRaises(ValueError) as context:
-            ht.time_to_phase(PHASE_ANGLE, 0.0, PERIOD)
+            ht.time_to_phase(33, 0.0, PERIOD)
         self.assertEqual(
             context.exception.message,
             'Cannot calculate phase time when one period is zero!',)
 
         with self.assertRaises(ValueError) as context:
-            ht.time_to_phase(PHASE_ANGLE, PERIOD, 0.0)
+            ht.time_to_phase(33, PERIOD, 0.0)
         self.assertEqual(
             context.exception.message,
             'Cannot calculate phase time when one period is zero!',)
@@ -67,6 +66,12 @@ class TestCalculationFunctions(unittest.TestCase):
             0.00,
             2,
             'Expected zero when phase angle and one period is zero.')
+
+        self.assertAlmostEqual(
+            ht.time_to_phase(180, 2*PERIOD, PERIOD),
+            PERIOD,
+            2,
+            'Expected one orbital period to phase when period ratio is 2:1.')
 
 
 if __name__ == '__main__':
