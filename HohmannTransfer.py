@@ -48,14 +48,16 @@ def Hohmann_phase_angle(sma1, sma2):
 def time_to_phase(phase_angle, period1, period2):
     """Calculate how long to wait for a particular phase angle change."""
     if period1 == period2:
-        return float('nan')
+        raise ValueError(
+            'Phase angle cannot change when periods are identical!')
     else:
         period = (period1*period2)/(period1-period2)
     if period == 0:
         if phase_angle == 0:
             return 0
         else:
-            return float('nan')
+            raise ValueError(
+                'Cannot calculate phase time when one period is zero!')
     else:
         time = phase_angle / 360 * period
     while time < 0:

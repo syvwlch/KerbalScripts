@@ -19,13 +19,13 @@ class TestCalculationFunctions(unittest.TestCase):
             ht.Hohmann_phase_angle(SEMI_MAJOR_AXIS, SEMI_MAJOR_AXIS),
             0.00,
             2,
-            'Expected zero phase when orbits are identical.',)
+            'Expected zero phase when orbits have same semi major axis.',)
 
         self.assertAlmostEqual(
             ht.Hohmann_phase_angle(SEMI_MAJOR_AXIS, 3*SEMI_MAJOR_AXIS),
             ht.Hohmann_phase_angle(SEMI_MAJOR_AXIS/3, SEMI_MAJOR_AXIS),
             2,
-            'Expected same result for given ratio of Semi Major Axis.')
+            'Expected same result for given ratio of semi major axis.')
 
         self.assertAlmostEqual(
             ht.Hohmann_phase_angle(SEMI_MAJOR_AXIS, 3*SEMI_MAJOR_AXIS),
@@ -38,6 +38,35 @@ class TestCalculationFunctions(unittest.TestCase):
             -150.68,
             2,
             'Expected -151 degree phase change when final orbit is 0.5x.')
+
+    def test_time_to_phase(self):
+        """Test the time before a phase angle is reached."""
+        PHASE_ANGLE = 45
+        PERIOD = 1000
+
+        with self.assertRaises(ValueError) as context:
+            ht.time_to_phase(PHASE_ANGLE, PERIOD, PERIOD)
+        self.assertEqual(
+            context.exception.message,
+            'Phase angle cannot change when periods are identical!',)
+
+        with self.assertRaises(ValueError) as context:
+            ht.time_to_phase(PHASE_ANGLE, 0.0, PERIOD)
+        self.assertEqual(
+            context.exception.message,
+            'Cannot calculate phase time when one period is zero!',)
+
+        with self.assertRaises(ValueError) as context:
+            ht.time_to_phase(PHASE_ANGLE, PERIOD, 0.0)
+        self.assertEqual(
+            context.exception.message,
+            'Cannot calculate phase time when one period is zero!',)
+
+        self.assertAlmostEqual(
+            ht.time_to_phase(0.0, 0.0, PERIOD),
+            0.00,
+            2,
+            'Expected zero when phase angle and one period is zero.')
 
 
 if __name__ == '__main__':
