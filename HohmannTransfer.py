@@ -23,6 +23,7 @@ if __name__ == "__main__":
 #  Constants that come in handy during Hohmann transfers.
 KSC_LONGITUDE = 285.425
 KERBIN_SYNCHRONOUS_ALTITUDE = 2863330
+KERBIN_EQUATORIAL_RADIUS = 600000
 MAXIMUM_ECCENTRICITY = 0.01
 
 
