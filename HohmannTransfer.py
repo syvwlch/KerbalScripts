@@ -35,9 +35,13 @@ def check_initial_orbit(maximum_eccentricity=MAXIMUM_ECCENTRICITY):
     return True
 
 
-def Hohmann_phase_angle(a1, a2):
-    """Calculate the phase angle change during a Hohmann maneuver."""
-    return 180 - 90 * sqrt(pow((a1+a2)/a2, 3)/2)
+def Hohmann_phase_angle(sma1, sma2):
+    """Calculate the phase angle change during a Hohmann maneuver.
+
+    Takes the semi_major_axis of initial and final orbits,
+    and returns the phase angle change during transfer.
+    """
+    return 180 - 90 * sqrt(pow((sma1+sma2)/sma2, 3)/2)
 
 
 def time_to_phase(phase_angle, period1, period2):
