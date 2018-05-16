@@ -6,42 +6,75 @@ Work in progress, currently does not have a stub for the KRPC server.
 
 import unittest
 import HohmannTransfer as ht
+import sys
 
 
-class TestCalculationFunctions(unittest.TestCase):
-    """Test those functions with only numbers as inputs and outputs."""
+class Test_environment(unittest.TestCase):
+    """Test the environment to ensure it will match production."""
 
-    def test_Hohmann_phase_angle(self):
-        """Test the phase angle change during a Hohmann maneuver."""
-        SEMI_MAJOR_AXIS = 164783
+    def test_python_version(self):
+        """Make sure the python version is 3.x."""
+        if sys.version_info[0] < 3:
+            raise Exception("Must be using Python 3.")
 
+
+class Test_Hohmann_phase_angle(unittest.TestCase):
+    """
+    Test Hohmann_phase_angle().
+
+    Function is expected to return the phase angle change
+    during a Hohmann transfer.
+    """
+
+    def test_same_SMA(self):
+        """Test with orbits with the same semi major axis."""
+        SEMI_MAJOR_AXIS = 14253.1
         self.assertAlmostEqual(
             ht.Hohmann_phase_angle(SEMI_MAJOR_AXIS, SEMI_MAJOR_AXIS),
-            0.00,
+            0.0,
             2,
-            'Expected zero phase when orbits have same semi major axis.',)
+            'Expected zero phase.',)
 
+    def test_same_SMA_ratio(self):
+        """Test with pairs of orbits with same ratio of semi major axis."""
+        SEMI_MAJOR_AXIS = 14253.1
         self.assertAlmostEqual(
             ht.Hohmann_phase_angle(SEMI_MAJOR_AXIS, 3*SEMI_MAJOR_AXIS),
             ht.Hohmann_phase_angle(SEMI_MAJOR_AXIS/3, SEMI_MAJOR_AXIS),
             2,
-            'Expected same result for given ratio of semi major axis.')
+            'Expected same result.')
 
+    def test_SMA_ratio_3(self):
+        """Test with final orbit 3 times as high as initial orbit."""
+        SEMI_MAJOR_AXIS = 14253.1
         self.assertAlmostEqual(
             ht.Hohmann_phase_angle(SEMI_MAJOR_AXIS, 3*SEMI_MAJOR_AXIS),
-            116.36,
+            82.02,
             2,
-            'Expected 116 degree phase change when final orbit is 3x.')
+            'Expected 82 degree phase change.')
 
+    def test_SMA_ratio_half(self):
+        """Test with final orbit half as high as initial orbit."""
+        SEMI_MAJOR_AXIS = 14253.1
         self.assertAlmostEqual(
             ht.Hohmann_phase_angle(SEMI_MAJOR_AXIS, 0.5*SEMI_MAJOR_AXIS),
             -150.68,
             2,
-            'Expected -151 degree phase change when final orbit is 0.5x.')
+            'Expected -151 degree phase change.')
 
-    def test_time_to_phase(self):
-        """Test the time before a phase angle is reached."""
-        PERIOD = 1000
+
+class Test_time_to_phase(unittest.TestCase):
+    """
+    Test time_to_phase().
+
+    Function is expected to return the time it will take
+    for the phase angle to change by the given value,
+    with the two orbital periods given.
+    """
+
+    def test_same_period(self):
+        """Test with the same orbital period."""
+        PERIOD = 12964.12
 
         with self.assertRaises(ValueError) as context:
             ht.time_to_phase(33, PERIOD, PERIOD)
@@ -49,29 +82,49 @@ class TestCalculationFunctions(unittest.TestCase):
             context.exception.message,
             'Phase angle cannot change when periods are identical!',)
 
+    def test_period_zero(self):
+        """Test with one or both periods equal to zero."""
+        PERIOD = 12964.12
         with self.assertRaises(ValueError) as context:
-            ht.time_to_phase(33, 0.0, PERIOD)
+            ht.time_to_phase(33, 0, PERIOD)
         self.assertEqual(
             context.exception.message,
             'Cannot calculate phase time when one period is zero!',)
 
         with self.assertRaises(ValueError) as context:
-            ht.time_to_phase(33, PERIOD, 0.0)
+            ht.time_to_phase(33, PERIOD, 0)
+        self.assertEqual(
+            context.exception.message,
+            'Cannot calculate phase time when one period is zero!',)
+
+        with self.assertRaises(ValueError) as context:
+            ht.time_to_phase(33, 0, 0)
         self.assertEqual(
             context.exception.message,
             'Cannot calculate phase time when one period is zero!',)
 
         self.assertAlmostEqual(
             ht.time_to_phase(0.0, 0.0, PERIOD),
-            0.00,
+            0,
             2,
             'Expected zero when phase angle and one period is zero.')
 
+    def test_period_ratio_2(self):
+        """Test with ratio of periods equal to 2."""
+        PERIOD = 12964.12
         self.assertAlmostEqual(
-            ht.time_to_phase(180, 2*PERIOD, PERIOD),
+            ht.time_to_phase(180.0, 2*PERIOD, PERIOD),
             PERIOD,
             2,
-            'Expected one orbital period to phase when period ratio is 2:1.')
+            'Expected one orbital period to phase 180 degrees.')
+
+    def test_integer_arguments(self):
+        """Test with only integers as arguments."""
+        self.assertAlmostEqual(
+            ht.time_to_phase(180, 2000, 1000),
+            ht.time_to_phase(180.0, 2000.0, 1000.0),
+            2,
+            'Expected same results when passing in integers.')
 
 
 if __name__ == '__main__':

@@ -59,7 +59,7 @@ def time_to_phase(phase_angle, period1, period2):
             raise ValueError(
                 'Cannot calculate phase time when one period is zero!')
     else:
-        time = phase_angle / 360.0 * period
+        time = phase_angle / 360 * period
     while time < 0:
         time = time + abs(period)
     while time > abs(period):
