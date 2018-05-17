@@ -142,7 +142,8 @@ def keostationary_transfer(longitude=KSC_LONGITUDE,
 
 
 def rendez_vous_transfer():
-    """Set up a Hohmann maneuver, to rendez-vous with current target.
+    """
+    Set up a Hohmann maneuver, to rendez-vous with current target.
 
     Assumes there is a target selected, and that it orbits the same body.
     """
