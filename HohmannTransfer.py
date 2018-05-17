@@ -13,8 +13,7 @@ if __name__ == "__main__":
     MODULE_HANDLE = 'HohmannTransfer'
     logger = InitialSetUp.set_up_logger(MODULE_HANDLE + '.log')
     try:
-        connection = InitialSetUp.connect_to_krpc_server(MODULE_HANDLE)
-        spacecenter = connection.space_center
+        conn = InitialSetUp.connect_to_krpc_server(MODULE_HANDLE)
     except ConnectionRefusedError:
         logger.critical('Connection refused.')
         logger.critical('Please check that KRPC server is running in KSP.')
@@ -25,10 +24,10 @@ KSC_LONGITUDE = 285.425
 MAXIMUM_ECCENTRICITY = 0.01
 
 
-def check_initial_orbit(maximum_eccentricity=MAXIMUM_ECCENTRICITY):
+def check_initial_orbit(conn, maximum_eccentricity=MAXIMUM_ECCENTRICITY):
     """Check how circular the current orbit is."""
-    vessel = spacecenter.active_vessel
-    if vessel.orbit.eccentricity > maximum_eccentricity:
+    eccentricity = conn.space_center.active_vessel.orbit.eccentricity
+    if eccentricity > maximum_eccentricity:
         logger.info('Please circularize first!')
         return False
     return True
@@ -81,7 +80,7 @@ def time_to_phase(phase_angle, period1, period2):
         relative_period(period1, period2))
 
 
-def hohmann_nodes(target_altitude, start_time):
+def hohmann_nodes(conn, target_altitude, start_time):
     """
     Set up a Hohmann Transfer's two maneuver nodes.
 
@@ -89,7 +88,7 @@ def hohmann_nodes(target_altitude, start_time):
     to set up a Hohmann transfer for a given altitude,
     starting at a give future time, and assuming circular orbits.
     """
-    vessel = spacecenter.active_vessel
+    vessel = conn.space_center.active_vessel
     mu = vessel.orbit.body.gravitational_parameter
     a1 = vessel.orbit.semi_major_axis
     a2 = target_altitude + vessel.orbit.body.equatorial_radius
@@ -108,7 +107,7 @@ def hohmann_nodes(target_altitude, start_time):
     return
 
 
-def keostationary_transfer(longitude=0):
+def keostationary_transfer(conn, longitude=0):
     """
     Set up a Hohmann transfer to Keostationary orbit.
 
@@ -119,18 +118,19 @@ def keostationary_transfer(longitude=0):
         return pow(mu*(period/(2*pi))**2, 1/3)
 
     def time_to_longitude(target_longitude):
-        """Calculate time to reach a longitude.
+        """
+        Calculate time to reach a longitude.
 
         Assumes a circular, equatorial orbit.
         """
-        vessel = spacecenter.active_vessel
+        vessel = conn.space_center.active_vessel
         rf = vessel.orbit.body.reference_frame
         return time_to_phase(
             vessel.flight(rf).longitude - target_longitude,
             vessel.orbit.period,
             vessel.orbit.body.rotational_period)
 
-    vessel = spacecenter.active_vessel
+    vessel = conn.space_center.active_vessel
     mu = vessel.orbit.body.gravitational_parameter
     rotational_period = vessel.orbit.body.rotational_period
     a1 = vessel.orbit.semi_major_axis
@@ -138,12 +138,13 @@ def keostationary_transfer(longitude=0):
     target_longitude = longitude - Hohmann_phase_angle(a1, a2)
     logger.info('Keostationary transfer calculated.')
     hohmann_nodes(
+        conn,
         a2 - vessel.orbit.body.equatorial_radius,
-        spacecenter.ut + time_to_longitude(target_longitude))
+        conn.space_center.ut + time_to_longitude(target_longitude))
     return
 
 
-def rendez_vous_transfer():
+def rendez_vous_transfer(conn):
     """
     Set up a Hohmann maneuver, to rendez-vous with current target.
 
@@ -154,9 +155,9 @@ def rendez_vous_transfer():
 
         Assumes there is a target selected, and that it orbits the same body.
         """
-        vessel = spacecenter.active_vessel
+        vessel = conn.space_center.active_vessel
         rf = vessel.orbit.body.reference_frame
-        target = spacecenter.target_vessel
+        target = conn.space_center.target_vessel
         vessel_longitude = vessel.flight(rf).longitude
         target_longitude = target.flight(rf).longitude
         return time_to_phase(
@@ -164,8 +165,8 @@ def rendez_vous_transfer():
             vessel.orbit.period,
             target.orbit.period)
 
-    vessel = spacecenter.active_vessel
-    target = spacecenter.target_vessel
+    vessel = conn.space_center.active_vessel
+    target = conn.space_center.target_vessel
     if target is None:
         raise ValueError('Tried to rendez-vous with no target set!')
     a1 = vessel.orbit.semi_major_axis
@@ -173,8 +174,9 @@ def rendez_vous_transfer():
     time_to_transfer = time_to_target_phase(-Hohmann_phase_angle(a1, a2))
     logger.info('Rendez-vous transfer calculated.')
     hohmann_nodes(
+        conn,
         target.orbit.apoapsis_altitude,
-        spacecenter.ut + time_to_transfer)
+        conn.space_center.ut + time_to_transfer)
     return
 
 
@@ -182,9 +184,9 @@ def rendez_vous_transfer():
 #  or go to Keostationary if not.
 if __name__ == "__main__":
     logger.info('Running HohmannTransfer as __main__.')
-    if check_initial_orbit():
-        if spacecenter.target_vessel is None:
-            keostationary_transfer(KSC_LONGITUDE)
+    if check_initial_orbit(conn):
+        if conn.space_center.target_vessel is None:
+            keostationary_transfer(conn, KSC_LONGITUDE)
         else:
-            rendez_vous_transfer()
+            rendez_vous_transfer(conn)
     logger.info('End of __main__.')
