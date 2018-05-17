@@ -89,19 +89,9 @@ class Test_time_to_phase(unittest.TestCase):
         2. use the non-zero period if one period is zero.
         """
         PHASE_ANGLE = 33.2
-        PERIOD = 12964.12
 
-        with self.subTest('Test 0:X.'):
-            with self.assertRaises(ValueError):
-                ht.time_to_phase(PHASE_ANGLE, 0, PERIOD)
-
-        with self.subTest('Test X:0.'):
-            with self.assertRaises(ValueError):
-                ht.time_to_phase(PHASE_ANGLE, PERIOD, 0)
-
-        with self.subTest('Test 0:0.'):
-            with self.assertRaises(ValueError):
-                ht.time_to_phase(PHASE_ANGLE, 0, 0)
+        with self.assertRaises(ValueError):
+            ht.time_to_phase(PHASE_ANGLE, 0, 0)
 
     def test_integer_arguments(self):
         """Test with only integers as arguments."""
@@ -161,6 +151,14 @@ class Test_time_to_phase(unittest.TestCase):
         with self.subTest('Test 3690 degree phase with 1:2 period ratio.'):
             self.assertAlmostEqual(
                 ht.time_to_phase(3690, PERIOD, 2*PERIOD), 3*PERIOD/2, 2)
+
+        with self.subTest('Test 90 degree phase with 1:0 period ratio.'):
+            self.assertAlmostEqual(
+                ht.time_to_phase(90, PERIOD, 0), PERIOD/2, 2)
+
+        with self.subTest('Test 90 degree phase with 1:0 period ratio.'):
+            self.assertAlmostEqual(
+                ht.time_to_phase(90, 0, PERIOD), PERIOD/2, 2)
 
 
 if __name__ == '__main__':
