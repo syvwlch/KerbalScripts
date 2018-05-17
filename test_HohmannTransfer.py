@@ -79,23 +79,44 @@ class Test_time_to_phase(unittest.TestCase):
         with self.assertRaises(ValueError):
             ht.time_to_phase(33, PERIOD, PERIOD)
 
-    def test_period_zero(self):
-        """Test with one or both periods equal to zero."""
+    def test_zeros_as_arguments(self):
+        """
+        Test with one or more arguments equal to zero.
+
+        Expected to raise a ValueError if one or both periods are zero,
+        but to return zero if phase angle is zero.
+        Note that if all three arguments are zero, we run into the case
+        where the periods are identical.
+        """
+        PHASE_ANGLE = 33.2
         PERIOD = 12964.12
-        with self.assertRaises(ValueError):
-            ht.time_to_phase(33, 0, PERIOD)
+        with self.subTest('Test 0:X:X.'):
+            self.assertAlmostEqual(
+                ht.time_to_phase(0, PERIOD, 2*PERIOD), 0, 2)
 
-        with self.assertRaises(ValueError):
-            ht.time_to_phase(33, PERIOD, 0)
+        with self.subTest('Test X:0:X.'):
+            with self.assertRaises(ValueError):
+                ht.time_to_phase(PHASE_ANGLE, 0, PERIOD)
 
-        with self.assertRaises(ValueError):
-            ht.time_to_phase(33, 0, 0)
+        with self.subTest('Test X:X:0.'):
+            with self.assertRaises(ValueError):
+                ht.time_to_phase(PHASE_ANGLE, PERIOD, 0)
 
-        self.assertAlmostEqual(
-            ht.time_to_phase(0.0, 0.0, PERIOD),
-            0,
-            2,
-            'Expected zero when phase angle and one period is zero.')
+        with self.subTest('Test 0:0:X.'):
+            self.assertAlmostEqual(
+                ht.time_to_phase(0, 0, PERIOD), 0, 2)
+
+        with self.subTest('Test X:0:0.'):
+            with self.assertRaises(ValueError):
+                ht.time_to_phase(PHASE_ANGLE, 0, 0)
+
+        with self.subTest('Test 0:X:0.'):
+            self.assertAlmostEqual(
+                ht.time_to_phase(0, PERIOD, 0), 0, 2)
+
+        with self.subTest('Test 0:0:0.'):
+            with self.assertRaises(ValueError):
+                ht.time_to_phase(0, 0, 0)
 
     def test_period_ratio_2(self):
         """Test with ratio of periods equal to 2."""
