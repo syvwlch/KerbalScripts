@@ -79,9 +79,9 @@ class Test_time_to_phase(unittest.TestCase):
         with self.assertRaises(ValueError):
             ht.time_to_phase(33, PERIOD, PERIOD)
 
-    def test_zeros_as_arguments(self):
+    def test_both_periods_zero(self):
         """
-        Test with one or more arguments equal to zero.
+        Test with both periods equal to zero.
 
         Expected to raise a ValueError if both periods are zero,
         and otherwise to:
@@ -156,7 +156,7 @@ class Test_time_to_phase(unittest.TestCase):
             self.assertAlmostEqual(
                 ht.time_to_phase(90, PERIOD, 0), PERIOD/4, 2)
 
-        with self.subTest('Test 90 degree phase with 1:0 period ratio.'):
+        with self.subTest('Test 90 degree phase with 0:1 period ratio.'):
             self.assertAlmostEqual(
                 ht.time_to_phase(90, 0, PERIOD), PERIOD/4, 2)
 
