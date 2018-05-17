@@ -8,6 +8,12 @@ import unittest
 import HohmannTransfer as ht
 import sys
 
+#  Constants that come in handy during Hohmann transfers.
+KSC_LONGITUDE = 285.425
+KERBIN_SYNCHRONOUS_ALTITUDE = 2863330
+KERBIN_EQUATORIAL_RADIUS = 600000
+MAXIMUM_ECCENTRICITY = 0.01
+
 
 class Test_environment(unittest.TestCase):
     """Test the environment to ensure it will match production."""

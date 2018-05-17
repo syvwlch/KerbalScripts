@@ -5,7 +5,7 @@ Currently assumes circular orbits, especially at the start!
 Nodes can be execute manually or with Node Executor script running in parallel.
 """
 
-from math import sqrt, pow
+from math import pi, sqrt, pow
 
 #  Logger and KRPC server connection if running as __main__
 if __name__ == "__main__":
@@ -22,8 +22,6 @@ if __name__ == "__main__":
 
 #  Constants that come in handy during Hohmann transfers.
 KSC_LONGITUDE = 285.425
-KERBIN_SYNCHRONOUS_ALTITUDE = 2863330
-KERBIN_EQUATORIAL_RADIUS = 600000
 MAXIMUM_ECCENTRICITY = 0.01
 
 
@@ -110,14 +108,16 @@ def hohmann_nodes(target_altitude, start_time):
     return
 
 
-def keostationary_transfer(longitude=KSC_LONGITUDE,
-                           synchronous_altitude=KERBIN_SYNCHRONOUS_ALTITUDE):
+def keostationary_transfer(longitude=0):
     """
     Set up a Hohmann transfer to Keostationary orbit.
 
-    Takes altitude of synchronous orbit as a parameter, does not calculate it.
-    Defaults to the KSC's longitude.
+    Defaults to longitude zero.
     """
+    def sma_from_orbital_period(mu, period):
+        """Calculate the semi_major_axis, given Mu and the orbital period."""
+        return pow(mu*(period/(2*pi))**2, 1/3)
+
     def time_to_longitude(target_longitude):
         """Calculate time to reach a longitude.
 
@@ -131,12 +131,14 @@ def keostationary_transfer(longitude=KSC_LONGITUDE,
             vessel.orbit.body.rotational_period)
 
     vessel = spacecenter.active_vessel
+    mu = vessel.orbit.body.gravitational_parameter
+    rotational_period = vessel.orbit.body.rotational_period
     a1 = vessel.orbit.semi_major_axis
-    a2 = synchronous_altitude + vessel.orbit.body.equatorial_radius
+    a2 = sma_from_orbital_period(mu, rotational_period)
     target_longitude = longitude - Hohmann_phase_angle(a1, a2)
     logger.info('Keostationary transfer calculated.')
     hohmann_nodes(
-        synchronous_altitude,
+        a2 - vessel.orbit.body.equatorial_radius,
         spacecenter.ut + time_to_longitude(target_longitude))
     return
 
@@ -182,7 +184,7 @@ if __name__ == "__main__":
     logger.info('Running HohmannTransfer as __main__.')
     if check_initial_orbit():
         if spacecenter.target_vessel is None:
-            keostationary_transfer()
+            keostationary_transfer(KSC_LONGITUDE)
         else:
             rendez_vous_transfer()
     logger.info('End of __main__.')
