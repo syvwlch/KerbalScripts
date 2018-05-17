@@ -118,22 +118,56 @@ class Test_time_to_phase(unittest.TestCase):
             with self.assertRaises(ValueError):
                 ht.time_to_phase(0, 0, 0)
 
-    def test_period_ratio_2(self):
-        """Test with ratio of periods equal to 2."""
-        PERIOD = 12964.12
-        self.assertAlmostEqual(
-            ht.time_to_phase(180.0, 2*PERIOD, PERIOD),
-            PERIOD,
-            2,
-            'Expected one orbital period to phase 180 degrees.')
-
     def test_integer_arguments(self):
         """Test with only integers as arguments."""
         self.assertAlmostEqual(
-            ht.time_to_phase(180, 2000, 1000),
-            ht.time_to_phase(180.0, 2000.0, 1000.0),
+            ht.time_to_phase(57, 1986, 5874),
+            ht.time_to_phase(57.0, 1986.0, 5874.0),
             2,
             'Expected same results when passing in integers.')
+
+    def test_some_expected_values(self):
+        """Test with some know arg:result sets."""
+        PERIOD = 100
+        with self.subTest('Test 180 degree phase with 2:1 period ratio.'):
+            self.assertAlmostEqual(
+                ht.time_to_phase(180, 2*PERIOD, PERIOD), PERIOD, 2)
+
+        with self.subTest('Test 180 degree phase with 1:2 period ratio.'):
+            self.assertAlmostEqual(
+                ht.time_to_phase(180, PERIOD, 2*PERIOD), PERIOD, 2)
+
+        with self.subTest('Test 90 degree phase with 2:1 period ratio.'):
+            self.assertAlmostEqual(
+                ht.time_to_phase(90, 2*PERIOD, PERIOD), PERIOD/2, 2)
+
+        with self.subTest('Test 90 degree phase with 1:2 period ratio.'):
+            self.assertAlmostEqual(
+                ht.time_to_phase(90, PERIOD, 2*PERIOD), 3*PERIOD/2, 2)
+
+        with self.subTest('Test -90 degree phase with 2:1 period ratio.'):
+            self.assertAlmostEqual(
+                ht.time_to_phase(-90, 2*PERIOD, PERIOD), 3*PERIOD/2, 2)
+
+        with self.subTest('Test -90 degree phase with 1:2 period ratio.'):
+            self.assertAlmostEqual(
+                ht.time_to_phase(-90, PERIOD, 2*PERIOD), PERIOD/2, 2)
+
+        with self.subTest('Test 270 degree phase with 2:1 period ratio.'):
+            self.assertAlmostEqual(
+                ht.time_to_phase(270, 2*PERIOD, PERIOD), 3*PERIOD/2, 2)
+
+        with self.subTest('Test 270 degree phase with 1:2 period ratio.'):
+            self.assertAlmostEqual(
+                ht.time_to_phase(270, PERIOD, 2*PERIOD), PERIOD/2, 2)
+
+        with self.subTest('Test 3690 degree phase with 2:1 period ratio.'):
+            self.assertAlmostEqual(
+                ht.time_to_phase(3690, 2*PERIOD, PERIOD), PERIOD/2, 2)
+
+        with self.subTest('Test 3690 degree phase with 1:2 period ratio.'):
+            self.assertAlmostEqual(
+                ht.time_to_phase(3690, PERIOD, 2*PERIOD), 3*PERIOD/2, 2)
 
 
 if __name__ == '__main__':
