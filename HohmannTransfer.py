@@ -55,18 +55,25 @@ def clamp_time_to_period(phase_angle, period):
     return result
 
 
-def time_to_phase(phase_angle, period1, period2):
-    """Calculate how long to wait for a particular phase angle change."""
+def relative_period(period1, period2):
+    """Calculate the relative period between two periods."""
     if period1 == period2:
         raise ValueError(
-            'Phase angle cannot change when periods are identical!')
+            'There is no relative periods when periods are identical!')
     elif period1 == 0:
         period = period2
     elif period2 == 0:
         period = period1
     else:
         period = (period1*period2)/(period1-period2)
-    return clamp_time_to_period(phase_angle, period)
+    return period
+
+
+def time_to_phase(phase_angle, period1, period2):
+    """Calculate how long to wait for a particular phase angle change."""
+    return clamp_time_to_period(
+        phase_angle,
+        relative_period(period1, period2))
 
 
 def time_to_longitude(target_longitude):
