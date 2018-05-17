@@ -5,7 +5,7 @@ Work in progress, currently does not have a stub for the KRPC server.
 """
 
 import unittest
-from unittest.mock import Mock
+from unittest.mock import patch
 import HohmannTransfer as ht
 import sys
 
@@ -23,6 +23,7 @@ class Test_environment(unittest.TestCase):
             raise Exception("Must be using Python 3.")
 
 
+@patch('HohmannTransfer.conn')
 class Test_check_initial_orbit(unittest.TestCase):
     """
     Test check_initial_orbit().
@@ -31,11 +32,22 @@ class Test_check_initial_orbit(unittest.TestCase):
     is below a threshold, which defaults to 0.01.
     """
 
-    def test_zero_eccentricity(self):
+    def test_zero_eccentricity(self, conn):
         """Test with zero eccentricity."""
-        conn = Mock()
         conn.space_center.active_vessel.orbit.eccentricity = 0
         self.assertTrue(ht.check_initial_orbit(conn))
+
+    def test_max_eccentricity(self, conn):
+        """Test with max eccentricity."""
+        max = ht.MAXIMUM_ECCENTRICITY
+        conn.space_center.active_vessel.orbit.eccentricity = max
+        self.assertTrue(ht.check_initial_orbit(conn))
+
+    @patch('HohmannTransfer.logger')
+    def test_too_much_eccentricity(self, conn, logger):
+        """Test with too much eccentricity."""
+        conn.space_center.active_vessel.orbit.eccentricity = 1
+        self.assertFalse(ht.check_initial_orbit(conn))
 
 
 class Test_Hohmann_phase_angle(unittest.TestCase):

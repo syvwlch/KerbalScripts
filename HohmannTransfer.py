@@ -6,25 +6,27 @@ Nodes can be execute manually or with Node Executor script running in parallel.
 """
 
 from math import pi, sqrt, pow
+import InitialSetUp
 
-#  Logger and KRPC server connection if running as __main__
-if __name__ == "__main__":
-    import InitialSetUp
-    MODULE_HANDLE = 'HohmannTransfer'
-    logger = InitialSetUp.set_up_logger(MODULE_HANDLE + '.log')
-    try:
-        conn = InitialSetUp.connect_to_krpc_server(MODULE_HANDLE)
-    except ConnectionRefusedError:
-        logger.critical('Connection refused.')
-        logger.critical('Please check that KRPC server is running in KSP.')
-        spacecenter = None
+#  Logger setup
+MODULE_HANDLE = 'HohmannTransfer'
+logger = InitialSetUp.set_up_logger(MODULE_HANDLE + '.log')
+
+#  KRPC server connection
+try:
+    conn = InitialSetUp.connect_to_krpc_server(MODULE_HANDLE)
+except ConnectionRefusedError:
+    logger.critical('Connection refused.')
+    logger.critical('Please check that KRPC server is running in KSP.')
+    conn = None
 
 #  Constants that come in handy during Hohmann transfers.
 KSC_LONGITUDE = 285.425
 MAXIMUM_ECCENTRICITY = 0.01
 
 
-def check_initial_orbit(conn, maximum_eccentricity=MAXIMUM_ECCENTRICITY):
+def check_initial_orbit(conn,
+                        maximum_eccentricity=MAXIMUM_ECCENTRICITY):
     """Check how circular the current orbit is."""
     eccentricity = conn.space_center.active_vessel.orbit.eccentricity
     if eccentricity > maximum_eccentricity:
