@@ -45,6 +45,16 @@ def Hohmann_phase_angle(sma1, sma2):
     return 180 - 90 * sqrt(pow((sma1+sma2)/sma2, 3)/2)
 
 
+def clamp_time_to_period(phase_angle, period):
+    """Clamp a phase angle to the interval between zero and abs(period)."""
+    result = phase_angle / 360 * period
+    while result < 0:
+        result = result + abs(period)
+    while result > abs(period):
+        result = result - abs(period)
+    return result
+
+
 def time_to_phase(phase_angle, period1, period2):
     """Calculate how long to wait for a particular phase angle change."""
     if period1 == period2:
@@ -59,12 +69,7 @@ def time_to_phase(phase_angle, period1, period2):
             raise ValueError(
                 'Cannot calculate phase time when one period is zero!')
     else:
-        time = phase_angle / 360 * period
-    while time < 0:
-        time = time + abs(period)
-    while time > abs(period):
-        time = time - abs(period)
-    return time
+        return clamp_time_to_period(phase_angle, period)
 
 
 def time_to_longitude(target_longitude):
