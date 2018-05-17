@@ -30,6 +30,10 @@ class Test_check_initial_orbit(unittest.TestCase):
 
     Function checks that initial orbit eccentricity
     is below a threshold, which defaults to 0.01.
+
+    Requires two patches:
+        - server connection (for all tests)
+        - logger (for one test)
     """
 
     def test_zero_eccentricity(self, conn):
