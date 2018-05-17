@@ -37,7 +37,8 @@ def check_initial_orbit(maximum_eccentricity=MAXIMUM_ECCENTRICITY):
 
 
 def Hohmann_phase_angle(initial_sma, final_sma):
-    """Calculate the phase angle change during a Hohmann maneuver.
+    """
+    Calculate the phase angle change during a Hohmann maneuver.
 
     Takes the semi_major_axis of initial and final orbits,
     and returns the phase angle change during transfer.
@@ -83,7 +84,8 @@ def time_to_phase(phase_angle, period1, period2):
 
 
 def hohmann_nodes(target_altitude, start_time):
-    """Set up a Hohmann Transfer's two maneuver nodes.
+    """
+    Set up a Hohmann Transfer's two maneuver nodes.
 
     Add two nodes to the current vessel's flight plan,
     to set up a Hohmann transfer for a given altitude,
@@ -110,7 +112,8 @@ def hohmann_nodes(target_altitude, start_time):
 
 def keostationary_transfer(longitude=KSC_LONGITUDE,
                            synchronous_altitude=KERBIN_SYNCHRONOUS_ALTITUDE):
-    """Set up a Hohmann transfer to Keostationary orbit.
+    """
+    Set up a Hohmann transfer to Keostationary orbit.
 
     Takes altitude of synchronous orbit as a parameter, does not calculate it.
     Defaults to the KSC's longitude.
