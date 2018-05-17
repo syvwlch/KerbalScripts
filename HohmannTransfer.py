@@ -60,16 +60,13 @@ def time_to_phase(phase_angle, period1, period2):
     if period1 == period2:
         raise ValueError(
             'Phase angle cannot change when periods are identical!')
+    elif period1 == 0:
+        period = period2
+    elif period2 == 0:
+        period = period1
     else:
         period = (period1*period2)/(period1-period2)
-    if period == 0:
-        if phase_angle == 0:
-            return 0
-        else:
-            raise ValueError(
-                'Cannot calculate phase time when one period is zero!')
-    else:
-        return clamp_time_to_period(phase_angle, period)
+    return clamp_time_to_period(phase_angle, period)
 
 
 def time_to_longitude(target_longitude):

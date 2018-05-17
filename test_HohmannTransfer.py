@@ -154,11 +154,11 @@ class Test_time_to_phase(unittest.TestCase):
 
         with self.subTest('Test 90 degree phase with 1:0 period ratio.'):
             self.assertAlmostEqual(
-                ht.time_to_phase(90, PERIOD, 0), PERIOD/2, 2)
+                ht.time_to_phase(90, PERIOD, 0), PERIOD/4, 2)
 
         with self.subTest('Test 90 degree phase with 1:0 period ratio.'):
             self.assertAlmostEqual(
-                ht.time_to_phase(90, 0, PERIOD), PERIOD/2, 2)
+                ht.time_to_phase(90, 0, PERIOD), PERIOD/4, 2)
 
 
 if __name__ == '__main__':
