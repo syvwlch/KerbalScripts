@@ -5,6 +5,7 @@ Work in progress, currently does not have a stub for the KRPC server.
 """
 
 import unittest
+from unittest.mock import Mock
 import HohmannTransfer as ht
 import sys
 
@@ -22,6 +23,21 @@ class Test_environment(unittest.TestCase):
         """Make sure the python version is 3.x."""
         if sys.version_info[0] < 3:
             raise Exception("Must be using Python 3.")
+
+
+class Test_check_initial_orbit(unittest.TestCase):
+    """
+    Test check_initial_orbit().
+
+    Function checks that initial orbit eccentricity
+    is below a threshold, which defaults to 0.01.
+    """
+
+    def test_zero_eccentricity(self):
+        """Test with zero eccentricity."""
+        conn = Mock()
+        conn.space_center.active_vessel.orbit.eccentricity = 0
+        self.assertTrue(ht.check_initial_orbit(conn))
 
 
 class Test_Hohmann_phase_angle(unittest.TestCase):
