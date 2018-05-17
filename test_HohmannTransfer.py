@@ -76,32 +76,20 @@ class Test_time_to_phase(unittest.TestCase):
         """Test with the same orbital period."""
         PERIOD = 12964.12
 
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(ValueError):
             ht.time_to_phase(33, PERIOD, PERIOD)
-        self.assertEqual(
-            context.exception.message,
-            'Phase angle cannot change when periods are identical!',)
 
     def test_period_zero(self):
         """Test with one or both periods equal to zero."""
         PERIOD = 12964.12
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(ValueError):
             ht.time_to_phase(33, 0, PERIOD)
-        self.assertEqual(
-            context.exception.message,
-            'Cannot calculate phase time when one period is zero!',)
 
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(ValueError):
             ht.time_to_phase(33, PERIOD, 0)
-        self.assertEqual(
-            context.exception.message,
-            'Cannot calculate phase time when one period is zero!',)
 
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(ValueError):
             ht.time_to_phase(33, 0, 0)
-        self.assertEqual(
-            context.exception.message,
-            'Cannot calculate phase time when one period is zero!',)
 
         self.assertAlmostEqual(
             ht.time_to_phase(0.0, 0.0, PERIOD),
