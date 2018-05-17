@@ -83,40 +83,25 @@ class Test_time_to_phase(unittest.TestCase):
         """
         Test with one or more arguments equal to zero.
 
-        Expected to raise a ValueError if one or both periods are zero,
-        but to return zero if phase angle is zero.
-        Note that if all three arguments are zero, we run into the case
-        where the periods are identical.
+        Expected to raise a ValueError if both periods are zero,
+        and otherwise to:
+        1. use the relative period if both periods are non zero, or
+        2. use the non-zero period if one period is zero.
         """
         PHASE_ANGLE = 33.2
         PERIOD = 12964.12
-        with self.subTest('Test 0:X:X.'):
-            self.assertAlmostEqual(
-                ht.time_to_phase(0, PERIOD, 2*PERIOD), 0, 2)
 
-        with self.subTest('Test X:0:X.'):
+        with self.subTest('Test 0:X.'):
             with self.assertRaises(ValueError):
                 ht.time_to_phase(PHASE_ANGLE, 0, PERIOD)
 
-        with self.subTest('Test X:X:0.'):
+        with self.subTest('Test X:0.'):
             with self.assertRaises(ValueError):
                 ht.time_to_phase(PHASE_ANGLE, PERIOD, 0)
 
-        with self.subTest('Test 0:0:X.'):
-            self.assertAlmostEqual(
-                ht.time_to_phase(0, 0, PERIOD), 0, 2)
-
-        with self.subTest('Test X:0:0.'):
+        with self.subTest('Test 0:0.'):
             with self.assertRaises(ValueError):
                 ht.time_to_phase(PHASE_ANGLE, 0, 0)
-
-        with self.subTest('Test 0:X:0.'):
-            self.assertAlmostEqual(
-                ht.time_to_phase(0, PERIOD, 0), 0, 2)
-
-        with self.subTest('Test 0:0:0.'):
-            with self.assertRaises(ValueError):
-                ht.time_to_phase(0, 0, 0)
 
     def test_integer_arguments(self):
         """Test with only integers as arguments."""
@@ -129,6 +114,14 @@ class Test_time_to_phase(unittest.TestCase):
     def test_some_expected_values(self):
         """Test with some know arg:result sets."""
         PERIOD = 100
+        with self.subTest('Test zero phase with 2:1 period ratio.'):
+            self.assertAlmostEqual(
+                ht.time_to_phase(0, 2*PERIOD, PERIOD), 0, 2)
+
+        with self.subTest('Test zero phase with 1:2 period ratio.'):
+            self.assertAlmostEqual(
+                ht.time_to_phase(0, PERIOD, 2*PERIOD), 0, 2)
+
         with self.subTest('Test 180 degree phase with 2:1 period ratio.'):
             self.assertAlmostEqual(
                 ht.time_to_phase(180, 2*PERIOD, PERIOD), PERIOD, 2)
