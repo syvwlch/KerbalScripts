@@ -53,66 +53,33 @@ def Hohmann_phase_angle(initial_sma, final_sma):
     return initial_phase_angle - transfer_phase_angle
 
 
-def clamp_time_to_period(phase_angle, period):
-    """Clamp a phase angle to the interval between zero and abs(period)."""
-    result = phase_angle / 360 * period
-    while result < 0:
-        result = result + abs(period)
-    while result > abs(period):
-        result = result - abs(period)
-    return result
-
-
-def relative_period(period1, period2):
-    """Calculate the relative period between two periods."""
-    if period1 == period2:
-        raise ValueError(
-            'There is no relative periods when periods are identical!')
-    elif period1 == 0:
-        period = period2
-    elif period2 == 0:
-        period = period1
-    else:
-        period = (period1*period2)/(period1-period2)
-    return period
-
-
 def time_to_phase(phase_angle, period1, period2):
     """Calculate how long to wait for a particular phase angle change."""
+    def clamp_time_to_period(phase_angle, period):
+        """Clamp a phase angle to the interval between zero and abs(period)."""
+        result = phase_angle / 360 * period
+        while result < 0:
+            result = result + abs(period)
+        while result > abs(period):
+            result = result - abs(period)
+        return result
+
+    def relative_period(period1, period2):
+        """Calculate the relative period between two periods."""
+        if period1 == period2:
+            raise ValueError(
+                'There is no relative periods when periods are identical!')
+        elif period1 == 0:
+            period = period2
+        elif period2 == 0:
+            period = period1
+        else:
+            period = (period1*period2)/(period1-period2)
+        return period
+
     return clamp_time_to_period(
         phase_angle,
         relative_period(period1, period2))
-
-
-def time_to_longitude(target_longitude):
-    """Calculate time to reach a certain longitude.
-
-    Assumes a circular, equatorial orbit.
-    """
-    vessel = spacecenter.active_vessel
-    rf = vessel.orbit.body.reference_frame
-    return time_to_phase(
-        vessel.flight(rf).longitude - target_longitude,
-        vessel.orbit.period,
-        vessel.orbit.body.rotational_period)
-
-
-def time_to_target_phase(target_phase):
-    """Calculate time to reach a certain phase angle with the target.
-
-    Assumes there is a target selected, and that it orbits the same body.
-    """
-    vessel = spacecenter.active_vessel
-    rf = vessel.orbit.body.reference_frame
-    target = spacecenter.target_vessel
-    if target is None:
-        raise ValueError('Tried to calculate phase angle with no target set!')
-    vessel_longitude = vessel.flight(rf).longitude
-    target_longitude = target.flight(rf).longitude
-    return time_to_phase(
-        vessel_longitude - target_longitude - target_phase,
-        vessel.orbit.period,
-        target.orbit.period)
 
 
 def hohmann_nodes(target_altitude, start_time):
@@ -148,6 +115,18 @@ def keostationary_transfer(longitude=KSC_LONGITUDE,
     Takes altitude of synchronous orbit as a parameter, does not calculate it.
     Defaults to the KSC's longitude.
     """
+    def time_to_longitude(target_longitude):
+        """Calculate time to reach a longitude.
+
+        Assumes a circular, equatorial orbit.
+        """
+        vessel = spacecenter.active_vessel
+        rf = vessel.orbit.body.reference_frame
+        return time_to_phase(
+            vessel.flight(rf).longitude - target_longitude,
+            vessel.orbit.period,
+            vessel.orbit.body.rotational_period)
+
     vessel = spacecenter.active_vessel
     a1 = vessel.orbit.semi_major_axis
     a2 = synchronous_altitude + vessel.orbit.body.equatorial_radius
@@ -164,6 +143,21 @@ def rendez_vous_transfer():
 
     Assumes there is a target selected, and that it orbits the same body.
     """
+    def time_to_target_phase(target_phase):
+        """Calculate time to reach a certain phase angle with the target.
+
+        Assumes there is a target selected, and that it orbits the same body.
+        """
+        vessel = spacecenter.active_vessel
+        rf = vessel.orbit.body.reference_frame
+        target = spacecenter.target_vessel
+        vessel_longitude = vessel.flight(rf).longitude
+        target_longitude = target.flight(rf).longitude
+        return time_to_phase(
+            vessel_longitude - target_longitude - target_phase,
+            vessel.orbit.period,
+            target.orbit.period)
+
     vessel = spacecenter.active_vessel
     target = spacecenter.target_vessel
     if target is None:
