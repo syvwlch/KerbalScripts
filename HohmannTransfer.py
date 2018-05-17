@@ -36,13 +36,21 @@ def check_initial_orbit(maximum_eccentricity=MAXIMUM_ECCENTRICITY):
     return True
 
 
-def Hohmann_phase_angle(sma1, sma2):
+def Hohmann_phase_angle(initial_sma, final_sma):
     """Calculate the phase angle change during a Hohmann maneuver.
 
     Takes the semi_major_axis of initial and final orbits,
     and returns the phase angle change during transfer.
     """
-    return 180 - 90 * sqrt(pow((sma1+sma2)/sma2, 3)/2)
+    # Transfer orbit by construction has half of both orbit's SMAs
+    transfer_sma = (initial_sma+final_sma)/2
+    # From formula for orbital period, ratio is 3/2 power of SMA ratio
+    orbital_period_ratio = pow(transfer_sma/final_sma, 3/2)
+    # Transfer starts 180 degrees from target
+    initial_phase_angle = 180
+    # Transfer happens within half a transfer orbit
+    transfer_phase_angle = 180 * orbital_period_ratio
+    return initial_phase_angle - transfer_phase_angle
 
 
 def clamp_time_to_period(phase_angle, period):
