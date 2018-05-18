@@ -81,6 +81,26 @@ def time_to_phase(phase_angle, period1, period2):
         relative_period(period1, period2))
 
 
+def hohmann_initial_dV(mu, initial_sma, final_sma):
+    """
+    Calculate deltaV for the initial maneuver of a Hohmann transfer.
+
+    Given the gravitational_parameter, and both semi_major_axis.
+    """
+    deltaV = sqrt(mu/initial_sma)*(sqrt(2*final_sma/(initial_sma+final_sma))-1)
+    return deltaV
+
+
+def hohmann_final_dV(mu, initial_sma, final_sma):
+    """
+    Calculate deltaV for the final maneuver of a Hohmann transfer.
+
+    Given the gravitational_parameter, and both semi_major_axis.
+    """
+    deltaV = sqrt(mu/final_sma)*(1-sqrt(2*initial_sma/(initial_sma+final_sma)))
+    return deltaV
+
+
 def hohmann_nodes(target_altitude, start_time):
     """
     Set up a Hohmann Transfer's two maneuver nodes.
@@ -94,7 +114,7 @@ def hohmann_nodes(target_altitude, start_time):
     a1 = vessel.orbit.semi_major_axis
     a2 = target_altitude + vessel.orbit.body.equatorial_radius
     # setting up first maneuver
-    dv1 = sqrt(mu/a1)*(sqrt(2*a2/(a1+a2))-1)
+    dv1 = hohmann_initial_dV(mu, a1, a2)
     node1 = vessel.control.add_node(start_time, prograde=dv1)
     # setting up second maneuver
     # measuring, rather than calculating
@@ -102,7 +122,7 @@ def hohmann_nodes(target_altitude, start_time):
         transfer_time = node1.orbit.time_to_apoapsis
     else:
         transfer_time = node1.orbit.time_to_periapsis
-    dv2 = sqrt(mu/a2)*(1-sqrt(2*a1/(a1+a2)))
+    dv2 = hohmann_final_dV(mu, a1, a2)
     vessel.control.add_node(start_time + transfer_time, prograde=dv2)
     logger.info('Hohmann transfer nodes added.')
     return
