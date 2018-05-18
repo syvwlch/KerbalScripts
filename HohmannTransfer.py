@@ -111,24 +111,13 @@ def hohmann_nodes(target_sma, start_time):
 
     def hohmann_transfer_time(mu, initial_sma, final_sma):
         """
-        Calculate or measure the time for a Hohmann transfer.
+        Calculate the transit time for a Hohmann transfer.
 
         Given the gravitational_parameter, and both semi_major_axis.
-
-        This seems to be the major source of error when the initial
-        orbit is not perfectly circular, hence the attempt to measure.
         """
-        vessel = conn.space_center.active_vessel
-        if len(vessel.control.nodes) == 0:
-            term_1 = pi/sqrt(8*mu)
-            term_2 = pow(initial_sma+final_sma, 3/2)
-            transfer_time = term_1*term_2
-        else:
-            node = vessel.control.nodes[0]
-            if node.delta_v > 0:
-                transfer_time = node.orbit.time_to_apoapsis
-            else:
-                transfer_time = node.orbit.time_to_periapsis
+        term_1 = pi/sqrt(8*mu)
+        term_2 = pow(initial_sma+final_sma, 3/2)
+        transfer_time = term_1*term_2
         return transfer_time
 
     # measure the initial orbit
