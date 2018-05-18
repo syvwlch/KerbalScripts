@@ -81,7 +81,7 @@ def time_to_phase(phase_angle, period1, period2):
         relative_period(period1, period2))
 
 
-def hohmann_nodes(target_sma, start_time):
+def hohmann_nodes(target_sma, time_to_start):
     """
     Set up a Hohmann Transfer's two maneuver nodes.
 
@@ -120,6 +120,9 @@ def hohmann_nodes(target_sma, start_time):
         transfer_time = term_1*term_2
         return transfer_time
 
+    # set start_time
+    start_time = conn.space_center.ut + time_to_start
+
     # measure the initial orbit
     vessel = conn.space_center.active_vessel
     mu = vessel.orbit.body.gravitational_parameter
@@ -139,7 +142,7 @@ def hohmann_nodes(target_sma, start_time):
     return
 
 
-def keostationary_transfer(longitude=0):
+def keostationary_transfer(target_longitude=0):
     """
     Set up a Hohmann transfer to Keostationary orbit.
 
@@ -149,30 +152,26 @@ def keostationary_transfer(longitude=0):
         """Calculate the semi_major_axis, given Mu and the orbital period."""
         return pow(mu*(period/(2*pi))**2, 1/3)
 
-    def time_to_longitude(target_longitude):
-        """
-        Calculate time to reach a longitude.
-
-        Assumes a circular, equatorial orbit.
-        """
-        vessel = conn.space_center.active_vessel
+    def current_phase_from_longitude(target_longitude):
+        """Measures current phase angle with target longitude."""
         rf = vessel.orbit.body.reference_frame
-        return time_to_phase(
-            vessel.flight(rf).longitude - target_longitude,
-            vessel.orbit.period,
-            vessel.orbit.body.rotational_period)
+        return target_longitude - vessel.flight(rf).longitude
 
     vessel = conn.space_center.active_vessel
     mu = vessel.orbit.body.gravitational_parameter
+    initial_sma = vessel.orbit.semi_major_axis
+
     rotational_period = vessel.orbit.body.rotational_period
-    a1 = vessel.orbit.semi_major_axis
-    a2 = sma_from_orbital_period(mu, rotational_period)
-    target_longitude = longitude - Hohmann_phase_angle(a1, a2)
-    time_to_transfer = time_to_longitude(target_longitude)
+    target_sma = sma_from_orbital_period(mu, rotational_period)
+
+    current_phase = current_phase_from_longitude(target_longitude)
+    transfer_phase = Hohmann_phase_angle(initial_sma, target_sma)
+    time_to_transfer = time_to_phase(transfer_phase - current_phase,
+                                     vessel.orbit.period,
+                                     vessel.orbit.body.rotational_period,)
+
     logger.info('Keostationary transfer calculated.')
-    hohmann_nodes(
-        a2,
-        conn.space_center.ut + time_to_transfer)
+    hohmann_nodes(target_sma, time_to_transfer)
     return
 
 
@@ -182,32 +181,37 @@ def rendez_vous_transfer():
 
     Assumes there is a target selected, and that it orbits the same body.
     """
-    def time_to_target_phase(target_phase):
-        """Calculate time to reach a certain phase angle with the target.
+    def sma_from_target():
+        """Calculate the semi_major_axis, given a target."""
+        if target is None:
+            raise ValueError('Tried to rendez-vous with no target set!')
+        else:
+            return target.orbit.semi_major_axis
 
-        Assumes there is a target selected, and that it orbits the same body.
-        """
-        vessel = conn.space_center.active_vessel
-        rf = vessel.orbit.body.reference_frame
-        target = conn.space_center.target_vessel
-        vessel_longitude = vessel.flight(rf).longitude
-        target_longitude = target.flight(rf).longitude
-        return time_to_phase(
-            vessel_longitude - target_longitude - target_phase,
-            vessel.orbit.period,
-            target.orbit.period)
+    def current_phase_from_target():
+        """Measures current phase angle to target."""
+        if target is None:
+            raise ValueError('Tried to rendez-vous with no target set!')
+        else:
+            rf = vessel.orbit.body.reference_frame
+            vessel_phase = vessel.flight(rf).longitude
+            target_phase = target.flight(rf).longitude
+            return target_phase - vessel_phase
 
     vessel = conn.space_center.active_vessel
+    initial_sma = vessel.orbit.semi_major_axis
+
     target = conn.space_center.target_vessel
-    if target is None:
-        raise ValueError('Tried to rendez-vous with no target set!')
-    a1 = vessel.orbit.semi_major_axis
-    a2 = target.orbit.semi_major_axis
-    time_to_transfer = time_to_target_phase(-Hohmann_phase_angle(a1, a2))
+    target_sma = sma_from_target()
+
+    current_phase = current_phase_from_target()
+    transfer_phase = Hohmann_phase_angle(initial_sma, target_sma)
+    time_to_transfer = time_to_phase(transfer_phase - current_phase,
+                                     vessel.orbit.period,
+                                     target.orbit.period,)
+
     logger.info('Rendez-vous transfer calculated.')
-    hohmann_nodes(
-        a2,
-        conn.space_center.ut + time_to_transfer)
+    hohmann_nodes(target_sma, time_to_transfer)
     return
 
 
