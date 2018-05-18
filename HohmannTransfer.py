@@ -30,7 +30,7 @@ def check_initial_orbit(conn,
     """Check how circular the current orbit is."""
     eccentricity = conn.space_center.active_vessel.orbit.eccentricity
     if eccentricity > maximum_eccentricity:
-        logger.info('Please circularize first!')
+        logger.info('Eccentricity too high for Hohmann transfers!')
         return False
     return True
 

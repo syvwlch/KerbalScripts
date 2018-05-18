@@ -36,22 +36,24 @@ class Test_check_initial_orbit(unittest.TestCase):
         - logger (for one test)
     """
 
-    def test_zero_eccentricity(self, conn):
+    def test_zero_eccentricity(self, mock_conn):
         """Test with zero eccentricity."""
-        conn.space_center.active_vessel.orbit.eccentricity = 0
-        self.assertTrue(ht.check_initial_orbit(conn))
+        mock_conn.space_center.active_vessel.orbit.eccentricity = 0
+        self.assertTrue(ht.check_initial_orbit(mock_conn))
 
-    def test_max_eccentricity(self, conn):
+    def test_max_eccentricity(self, mock_conn):
         """Test with max eccentricity."""
         max = ht.MAXIMUM_ECCENTRICITY
-        conn.space_center.active_vessel.orbit.eccentricity = max
-        self.assertTrue(ht.check_initial_orbit(conn))
+        mock_conn.space_center.active_vessel.orbit.eccentricity = max
+        self.assertTrue(ht.check_initial_orbit(mock_conn))
 
     @patch('HohmannTransfer.logger')
-    def test_too_much_eccentricity(self, conn, logger):
+    def test_too_much_eccentricity(self, mock_logger, mock_conn):
         """Test with too much eccentricity."""
-        conn.space_center.active_vessel.orbit.eccentricity = 1
-        self.assertFalse(ht.check_initial_orbit(conn))
+        ERROR_MSG = 'Eccentricity too high for Hohmann transfers!'
+        mock_conn.space_center.active_vessel.orbit.eccentricity = 1
+        self.assertFalse(ht.check_initial_orbit(mock_conn))
+        mock_logger.info.assert_called_once_with(ERROR_MSG)
 
 
 class Test_Hohmann_phase_angle(unittest.TestCase):
