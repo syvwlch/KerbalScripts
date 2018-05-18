@@ -11,7 +11,6 @@ import sys
 
 #  Constants that come in handy during Hohmann transfers.
 KERBIN_SYNCHRONOUS_ALTITUDE = 2863330
-KERBIN_EQUATORIAL_RADIUS = 600000
 
 
 class Test_environment(unittest.TestCase):

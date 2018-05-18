@@ -101,7 +101,7 @@ def hohmann_final_dV(mu, initial_sma, final_sma):
     return deltaV
 
 
-def hohmann_nodes(target_altitude, start_time):
+def hohmann_nodes(target_sma, start_time):
     """
     Set up a Hohmann Transfer's two maneuver nodes.
 
@@ -112,7 +112,7 @@ def hohmann_nodes(target_altitude, start_time):
     vessel = conn.space_center.active_vessel
     mu = vessel.orbit.body.gravitational_parameter
     a1 = vessel.orbit.semi_major_axis
-    a2 = target_altitude + vessel.orbit.body.equatorial_radius
+    a2 = target_sma  # target_altitude + vessel.orbit.body.equatorial_radius
     # setting up first maneuver
     dv1 = hohmann_initial_dV(mu, a1, a2)
     node1 = vessel.control.add_node(start_time, prograde=dv1)
@@ -157,10 +157,11 @@ def keostationary_transfer(longitude=0):
     a1 = vessel.orbit.semi_major_axis
     a2 = sma_from_orbital_period(mu, rotational_period)
     target_longitude = longitude - Hohmann_phase_angle(a1, a2)
+    time_to_transfer = time_to_longitude(target_longitude)
     logger.info('Keostationary transfer calculated.')
     hohmann_nodes(
-        a2 - vessel.orbit.body.equatorial_radius,
-        conn.space_center.ut + time_to_longitude(target_longitude))
+        a2,
+        conn.space_center.ut + time_to_transfer)
     return
 
 
@@ -194,7 +195,7 @@ def rendez_vous_transfer():
     time_to_transfer = time_to_target_phase(-Hohmann_phase_angle(a1, a2))
     logger.info('Rendez-vous transfer calculated.')
     hohmann_nodes(
-        target.orbit.apoapsis_altitude,
+        a2,
         conn.space_center.ut + time_to_transfer)
     return
 
