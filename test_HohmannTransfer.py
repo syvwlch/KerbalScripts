@@ -36,6 +36,12 @@ class Test_check_initial_orbit(unittest.TestCase):
         - logger (for one test)
     """
 
+    def test_default_constant(self, mock_conn):
+        """Test with max eccentricity."""
+        max = ht.MAXIMUM_ECCENTRICITY
+        self.assertGreaterEqual(max, 0)
+        self.assertLess(max, 1)
+
     def test_zero_eccentricity(self, mock_conn):
         """Test with zero eccentricity."""
         mock_conn.space_center.active_vessel.orbit.eccentricity = 0
