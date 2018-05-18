@@ -89,50 +89,49 @@ def hohmann_nodes(target_sma, start_time):
     to set up a Hohmann transfer for a given altitude,
     starting at a give future time, and assuming circular orbits.
     """
-    def hohmann_initial_dV(mu, initial_sma, final_sma):
+    def hohmann_initial_dV(mu, initial_sma, target_sma):
         """
         Calculate deltaV for the initial maneuver of a Hohmann transfer.
 
         Given the gravitational_parameter, and both semi_major_axis.
         """
         term_1 = sqrt(mu/initial_sma)
-        term_2 = (sqrt(2*final_sma/(initial_sma+final_sma))-1)
+        term_2 = (sqrt(2*target_sma/(initial_sma+target_sma))-1)
         return term_1 * term_2
 
-    def hohmann_final_dV(mu, initial_sma, final_sma):
+    def hohmann_final_dV(mu, initial_sma, target_sma):
         """
         Calculate deltaV for the final maneuver of a Hohmann transfer.
 
         Given the gravitational_parameter, and both semi_major_axis.
         """
-        term_1 = sqrt(mu/final_sma)
-        term_2 = (1-sqrt(2*initial_sma/(initial_sma+final_sma)))
+        term_1 = sqrt(mu/target_sma)
+        term_2 = (1-sqrt(2*initial_sma/(initial_sma+target_sma)))
         return term_1 * term_2
 
-    def hohmann_transfer_time(mu, initial_sma, final_sma):
+    def hohmann_transfer_time(mu, initial_sma, target_sma):
         """
         Calculate the transit time for a Hohmann transfer.
 
         Given the gravitational_parameter, and both semi_major_axis.
         """
         term_1 = pi/sqrt(8*mu)
-        term_2 = pow(initial_sma+final_sma, 3/2)
+        term_2 = pow(initial_sma+target_sma, 3/2)
         transfer_time = term_1*term_2
         return transfer_time
 
     # measure the initial orbit
     vessel = conn.space_center.active_vessel
     mu = vessel.orbit.body.gravitational_parameter
-    a1 = vessel.orbit.semi_major_axis
-    a2 = target_sma
+    initial_sma = vessel.orbit.semi_major_axis
 
     # set up first maneuver
-    dv1 = hohmann_initial_dV(mu, a1, a2)
+    dv1 = hohmann_initial_dV(mu, initial_sma, target_sma)
     vessel.control.add_node(start_time, prograde=dv1)
 
     # set up second maneuver
-    transfer_time = hohmann_transfer_time(mu, a1, a2)
-    dv2 = hohmann_final_dV(mu, a1, a2)
+    transfer_time = hohmann_transfer_time(mu, initial_sma, target_sma)
+    dv2 = hohmann_final_dV(mu, initial_sma, target_sma)
     vessel.control.add_node(start_time + transfer_time, prograde=dv2)
     logger.info('Hohmann transfer nodes added.')
 
