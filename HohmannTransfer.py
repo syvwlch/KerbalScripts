@@ -81,138 +81,90 @@ def time_to_phase(phase_angle, period1, period2):
         relative_period(period1, period2))
 
 
-def hohmann_nodes(target_sma, time_to_start):
+class HohmannTransfer:
     """
-    Set up a Hohmann Transfer's two maneuver nodes.
+    General class for all Hohmann transfers.
 
-    Add two nodes to the current vessel's flight plan,
-    to set up a Hohmann transfer for a given altitude,
-    starting at a give future time, and assuming circular orbits.
+    Will include methods for transfers to Keostationary orbits,
+    orbital rendez-vous transfers, etc...
     """
-    def hohmann_initial_dV(mu, initial_sma, target_sma):
-        """
-        Calculate deltaV for the initial maneuver of a Hohmann transfer.
 
-        Given the gravitational_parameter, and both semi_major_axis.
-        """
-        term_1 = sqrt(mu/initial_sma)
-        term_2 = (sqrt(2*target_sma/(initial_sma+target_sma))-1)
+    def __init__(self, initial_sma=1, target_sma=1, mu=1):
+        """Set arguments directly."""
+        self.initial_sma = initial_sma
+        self.target_sma = target_sma
+        self.mu = mu
+        if mu*initial_sma*target_sma == 0:
+            raise ValueError('Mu and semi major axes cannot be zero.')
+
+    @property
+    def initial_dV(self):
+        """Set deltaV for the initial maneuver of a Hohmann transfer."""
+        term_1 = sqrt(self.mu/self.initial_sma)
+        term_2 = sqrt(2*self.target_sma/(self.initial_sma+self.target_sma))
+        return term_1 * (term_2-1)
+
+    @property
+    def final_dV(self):
+        """Set deltaV for the final maneuver of a Hohmann transfer."""
+        term_1 = sqrt(self.mu/self.target_sma)
+        term_2 = sqrt(2*self.initial_sma/(self.initial_sma+self.target_sma))
+        return term_1 * (1-term_2)
+
+    @property
+    def transfer_time(self):
+        """Transit time for a Hohmann transfer."""
+        term_1 = pi/sqrt(8*self.mu)
+        term_2 = pow(self.initial_sma+self.target_sma, 3/2)
         return term_1 * term_2
 
-    def hohmann_final_dV(mu, initial_sma, target_sma):
-        """
-        Calculate deltaV for the final maneuver of a Hohmann transfer.
+    @property
+    def phase_change(self):
+        """Phase angle change during a Hohmann maneuver."""
+        # Transfer orbit by construction has half of both orbit's SMAs
+        transfer_sma = (self.initial_sma + self.target_sma)/2
+        # From formula for orbital period, ratio is 3/2 power of SMA ratio
+        orbital_period_ratio = pow(transfer_sma/self.target_sma, 3/2)
+        # Transfer starts 180 degrees from target
+        initial_phase_angle = 180
+        # Transfer happens within half a transfer orbit
+        transfer_phase_angle = 180 * orbital_period_ratio
+        return initial_phase_angle - transfer_phase_angle
 
-        Given the gravitational_parameter, and both semi_major_axis.
-        """
-        term_1 = sqrt(mu/target_sma)
-        term_2 = (1-sqrt(2*initial_sma/(initial_sma+target_sma)))
-        return term_1 * term_2
+    def set_from_vessel(self, vessel):
+        """Set mu & initial_sma from a vessel."""
+        try:
+            self.mu = vessel.orbit.body.gravitational_parameter
+            self.initial_sma = vessel.orbit.semi_major_axis
+        except AttributeError:
+            raise('Could not get value from vessel.')
 
-    def hohmann_transfer_time(mu, initial_sma, target_sma):
-        """
-        Calculate the transit time for a Hohmann transfer.
+    def set_from_target(self, target):
+        """Set mu & final_sma from a target, vessel or body."""
+        try:
+            self.mu = vessel.orbit.body.gravitational_parameter
+            self.target_sma = target.orbit.semi_major_axis
+        except AttributeError:
+            print('Could not get value from target.')
 
-        Given the gravitational_parameter, and both semi_major_axis.
-        """
-        term_1 = pi/sqrt(8*mu)
-        term_2 = pow(initial_sma+target_sma, 3/2)
-        transfer_time = term_1*term_2
-        return transfer_time
+    def set_from_body(self, body):
+        """Set mu & target_sma for synchronous orbit around body."""
+        try:
+            self.mu = vessel.orbit.body.gravitational_parameter
+            rotational_period = body.rotational_period
+            self.target_sma = pow(self.mu*(rotational_period/(2*pi))**2, 1/3)
+        except AttributeError:
+            raise('Could not get value from body.')
 
-    # set start_time
-    start_time = conn.space_center.ut + time_to_start
-
-    # measure the initial orbit
-    vessel = conn.space_center.active_vessel
-    mu = vessel.orbit.body.gravitational_parameter
-    initial_sma = vessel.orbit.semi_major_axis
-
-    # set up first maneuver
-    dv1 = hohmann_initial_dV(mu, initial_sma, target_sma)
-    vessel.control.add_node(start_time, prograde=dv1)
-
-    # set up second maneuver
-    transfer_time = hohmann_transfer_time(mu, initial_sma, target_sma)
-    dv2 = hohmann_final_dV(mu, initial_sma, target_sma)
-    vessel.control.add_node(start_time + transfer_time, prograde=dv2)
-    logger.info('Hohmann transfer nodes added.')
-
-    # done
-    return
-
-
-def keostationary_transfer(target_longitude=0):
-    """
-    Set up a Hohmann transfer to Keostationary orbit.
-
-    Defaults to longitude zero.
-    """
-    def sma_from_orbital_period(mu, period):
-        """Calculate the semi_major_axis, given Mu and the orbital period."""
-        return pow(mu*(period/(2*pi))**2, 1/3)
-
-    def current_phase_from_longitude(target_longitude):
-        """Measures current phase angle with target longitude."""
-        rf = vessel.orbit.body.reference_frame
-        return target_longitude - vessel.flight(rf).longitude
-
-    vessel = conn.space_center.active_vessel
-    mu = vessel.orbit.body.gravitational_parameter
-    initial_sma = vessel.orbit.semi_major_axis
-
-    rotational_period = vessel.orbit.body.rotational_period
-    target_sma = sma_from_orbital_period(mu, rotational_period)
-
-    current_phase = current_phase_from_longitude(target_longitude)
-    transfer_phase = Hohmann_phase_angle(initial_sma, target_sma)
-    time_to_transfer = time_to_phase(transfer_phase - current_phase,
-                                     vessel.orbit.period,
-                                     vessel.orbit.body.rotational_period,)
-
-    logger.info('Keostationary transfer calculated.')
-    hohmann_nodes(target_sma, time_to_transfer)
-    return
-
-
-def rendez_vous_transfer():
-    """
-    Set up a Hohmann maneuver, to rendez-vous with current target.
-
-    Assumes there is a target selected, and that it orbits the same body.
-    """
-    def sma_from_target():
-        """Calculate the semi_major_axis, given a target."""
-        if target is None:
-            raise ValueError('Tried to rendez-vous with no target set!')
-        else:
-            return target.orbit.semi_major_axis
-
-    def current_phase_from_target():
-        """Measures current phase angle to target."""
-        if target is None:
-            raise ValueError('Tried to rendez-vous with no target set!')
-        else:
-            rf = vessel.orbit.body.reference_frame
-            vessel_phase = vessel.flight(rf).longitude
-            target_phase = target.flight(rf).longitude
-            return target_phase - vessel_phase
-
-    vessel = conn.space_center.active_vessel
-    initial_sma = vessel.orbit.semi_major_axis
-
-    target = conn.space_center.target_vessel
-    target_sma = sma_from_target()
-
-    current_phase = current_phase_from_target()
-    transfer_phase = Hohmann_phase_angle(initial_sma, target_sma)
-    time_to_transfer = time_to_phase(transfer_phase - current_phase,
-                                     vessel.orbit.period,
-                                     target.orbit.period,)
-
-    logger.info('Rendez-vous transfer calculated.')
-    hohmann_nodes(target_sma, time_to_transfer)
-    return
+    def add_nodes(self, vessel, time_to_start):
+        """Add two maneuver nodes to vessel to set up transfer."""
+        try:
+            start_time = conn.space_center.ut + time_to_start
+            stop_time = start_time + self.transfer_time
+            vessel.control.add_node(start_time, prograde=self.initial_dV)
+            vessel.control.add_node(stop_time, prograde=self.final_dV)
+        except AttributeError:
+            raise('Could not add nodes to vessel.')
 
 
 #  If running as __main__ then rdv if there is a target,
@@ -221,7 +173,38 @@ if __name__ == "__main__":
     logger.info('Running HohmannTransfer as __main__.')
     if check_initial_orbit():
         if conn.space_center.target_vessel is None:
-            keostationary_transfer(KSC_LONGITUDE)
+            # keostationary_transfer(KSC_LONGITUDE)
+            vessel = conn.space_center.active_vessel
+            body = vessel.orbit.body
+            ht = HohmannTransfer()
+            ht.set_from_vessel(vessel)
+            ht.set_from_body(body)
+
+            rotational_period = body.rotational_period
+            rf = body.reference_frame
+            current_phase = KSC_LONGITUDE - vessel.flight(rf).longitude
+            transfer_phase = ht.phase_change
+            time_to_transfer = time_to_phase(transfer_phase - current_phase,
+                                             vessel.orbit.period,
+                                             rotational_period,)
+
+            ht.add_nodes(vessel, time_to_transfer)
         else:
-            rendez_vous_transfer()
+            vessel = conn.space_center.active_vessel
+            target = conn.space_center.target_vessel
+
+            ht = HohmannTransfer()
+            ht.set_from_vessel(vessel)
+            ht.set_from_target(target)
+
+            rf = vessel.orbit.body.reference_frame
+            vessel_phase = vessel.flight(rf).longitude
+            target_phase = target.flight(rf).longitude
+            current_phase = target_phase - vessel_phase
+            transfer_phase = ht.phase_change
+            time_to_transfer = time_to_phase(transfer_phase - current_phase,
+                                             vessel.orbit.period,
+                                             target.orbit.period,)
+
+            ht.add_nodes(vessel, time_to_transfer)
     logger.info('End of __main__.')
