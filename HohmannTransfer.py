@@ -81,26 +81,6 @@ def time_to_phase(phase_angle, period1, period2):
         relative_period(period1, period2))
 
 
-def hohmann_initial_dV(mu, initial_sma, final_sma):
-    """
-    Calculate deltaV for the initial maneuver of a Hohmann transfer.
-
-    Given the gravitational_parameter, and both semi_major_axis.
-    """
-    deltaV = sqrt(mu/initial_sma)*(sqrt(2*final_sma/(initial_sma+final_sma))-1)
-    return deltaV
-
-
-def hohmann_final_dV(mu, initial_sma, final_sma):
-    """
-    Calculate deltaV for the final maneuver of a Hohmann transfer.
-
-    Given the gravitational_parameter, and both semi_major_axis.
-    """
-    deltaV = sqrt(mu/final_sma)*(1-sqrt(2*initial_sma/(initial_sma+final_sma)))
-    return deltaV
-
-
 def hohmann_nodes(target_sma, start_time):
     """
     Set up a Hohmann Transfer's two maneuver nodes.
@@ -109,22 +89,65 @@ def hohmann_nodes(target_sma, start_time):
     to set up a Hohmann transfer for a given altitude,
     starting at a give future time, and assuming circular orbits.
     """
+    def hohmann_initial_dV(mu, initial_sma, final_sma):
+        """
+        Calculate deltaV for the initial maneuver of a Hohmann transfer.
+
+        Given the gravitational_parameter, and both semi_major_axis.
+        """
+        term_1 = sqrt(mu/initial_sma)
+        term_2 = (sqrt(2*final_sma/(initial_sma+final_sma))-1)
+        return term_1 * term_2
+
+    def hohmann_final_dV(mu, initial_sma, final_sma):
+        """
+        Calculate deltaV for the final maneuver of a Hohmann transfer.
+
+        Given the gravitational_parameter, and both semi_major_axis.
+        """
+        term_1 = sqrt(mu/final_sma)
+        term_2 = (1-sqrt(2*initial_sma/(initial_sma+final_sma)))
+        return term_1 * term_2
+
+    def hohmann_transfer_time(mu, initial_sma, final_sma):
+        """
+        Calculate or measure the time for a Hohmann transfer.
+
+        Given the gravitational_parameter, and both semi_major_axis.
+
+        This seems to be the major source of error when the initial
+        orbit is not perfectly circular, hence the attempt to measure.
+        """
+        vessel = conn.space_center.active_vessel
+        if len(vessel.control.nodes) == 0:
+            term_1 = pi/sqrt(8*mu)
+            term_2 = pow(initial_sma+final_sma, 3/2)
+            transfer_time = term_1*term_2
+        else:
+            node = vessel.control.nodes[0]
+            if node.delta_v > 0:
+                transfer_time = node.orbit.time_to_apoapsis
+            else:
+                transfer_time = node.orbit.time_to_periapsis
+        return transfer_time
+
+    # measure the initial orbit
     vessel = conn.space_center.active_vessel
     mu = vessel.orbit.body.gravitational_parameter
     a1 = vessel.orbit.semi_major_axis
-    a2 = target_sma  # target_altitude + vessel.orbit.body.equatorial_radius
-    # setting up first maneuver
+    a2 = target_sma
+
+    # set up first maneuver
     dv1 = hohmann_initial_dV(mu, a1, a2)
-    node1 = vessel.control.add_node(start_time, prograde=dv1)
-    # setting up second maneuver
-    # measuring, rather than calculating
-    if dv1 > 0:
-        transfer_time = node1.orbit.time_to_apoapsis
-    else:
-        transfer_time = node1.orbit.time_to_periapsis
+    vessel.control.add_node(start_time, prograde=dv1)
+
+    # set up second maneuver
+    transfer_time = hohmann_transfer_time(mu, a1, a2)
     dv2 = hohmann_final_dV(mu, a1, a2)
     vessel.control.add_node(start_time + transfer_time, prograde=dv2)
     logger.info('Hohmann transfer nodes added.')
+
+    # done
     return
 
 
