@@ -1,7 +1,7 @@
 """
 Unit test the HohmannTransfer module.
 
-Work in progress, currently does not have a stub for the KRPC server.
+Work in progress.
 """
 
 import unittest
