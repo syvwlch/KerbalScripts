@@ -78,6 +78,7 @@ class HohmannTransfer:
         self.mu = mu
         if mu*initial_sma*target_sma == 0:
             raise ValueError('Mu and semi major axes cannot be zero.')
+        self.time_to_start = 0
 
     @property
     def initial_dV(self):
@@ -138,10 +139,10 @@ class HohmannTransfer:
         except AttributeError:
             raise('Could not get value from body.')
 
-    def add_nodes(self, vessel, time_to_start):
+    def add_nodes(self, vessel):
         """Add two maneuver nodes to vessel to set up transfer."""
         try:
-            start_time = conn.space_center.ut + time_to_start
+            start_time = conn.space_center.ut + self.time_to_start
             stop_time = start_time + self.transfer_time
             vessel.control.add_node(start_time, prograde=self.initial_dV)
             vessel.control.add_node(stop_time, prograde=self.final_dV)
@@ -170,7 +171,8 @@ if __name__ == "__main__":
                                              vessel.orbit.period,
                                              rotational_period,)
 
-            ht.add_nodes(vessel, time_to_transfer)
+            ht.time_to_start = time_to_transfer
+            ht.add_nodes(vessel)
         else:
             vessel = conn.space_center.active_vessel
             target = conn.space_center.target_vessel
@@ -188,5 +190,6 @@ if __name__ == "__main__":
                                              vessel.orbit.period,
                                              target.orbit.period,)
 
-            ht.add_nodes(vessel, time_to_transfer)
+            ht.time_to_start = time_to_transfer
+            ht.add_nodes(vessel)
     logger.info('End of __main__.')
