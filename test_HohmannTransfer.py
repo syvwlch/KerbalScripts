@@ -10,7 +10,9 @@ import HohmannTransfer as ht
 import sys
 
 #  Constants that come in handy during Hohmann transfers.
-KERBIN_SYNCHRONOUS_ALTITUDE = 2863330
+KERBIN_EQUATORIAL_RADIUS = 600000.0
+KERBIN_SYNCHRONOUS_SEMI_MAJOR_AXIS = 3463334.1352937142
+KERBIN_GRAVITATIONAL_PARAMETER = 3531600035840.0
 
 
 class Test_environment(unittest.TestCase):
@@ -61,47 +63,63 @@ class Test_check_initial_orbit(unittest.TestCase):
         mock_logger.info.assert_called_once_with(ERROR_MSG)
 
 
-class Test_Hohmann_phase_angle(unittest.TestCase):
+class Test_phase_change(unittest.TestCase):
     """
-    Test Hohmann_phase_angle().
+    Test the phase_change() method of class HohmannTransfer.
 
-    Function is expected to return the phase angle change
+    Method is expected to return the phase change
     during a Hohmann transfer.
     """
 
+    def setUp(self):
+        """Set up for this test case class."""
+        self.MU = KERBIN_GRAVITATIONAL_PARAMETER
+        self.SMA = KERBIN_SYNCHRONOUS_SEMI_MAJOR_AXIS
+        self.PRECISION = 7
+
     def test_same_SMA(self):
         """Test with orbits with the same semi major axis."""
-        SEMI_MAJOR_AXIS = 14253.1
-        self.assertAlmostEqual(
-            ht.Hohmann_phase_angle(SEMI_MAJOR_AXIS, SEMI_MAJOR_AXIS),
-            0.0,
-            2,
-            'Expected zero phase.',)
+        transfer = ht.HohmannTransfer(self.SMA, self.SMA, self.MU)
+
+        result = transfer.phase_change
+        expected = 0.0
+        fail_msg = 'Expected zero phase change for 1:1 SMAs ratio!'
+
+        self.assertAlmostEqual(result, expected, self.PRECISION, fail_msg,)
 
     def test_same_SMA_ratio(self):
-        """Test with pairs of orbits with same ratio of semi major axis."""
-        SEMI_MAJOR_AXIS = 14253.1
-        self.assertAlmostEqual(
-            ht.Hohmann_phase_angle(SEMI_MAJOR_AXIS, 3*SEMI_MAJOR_AXIS),
-            ht.Hohmann_phase_angle(SEMI_MAJOR_AXIS/3, SEMI_MAJOR_AXIS),
-            2,
-            'Expected same result.')
+        """Test with pairs of orbits with the same ratio of semi major axis."""
+        ratio = 2.5
+        transfer1 = ht.HohmannTransfer(self.SMA, self.SMA*ratio, self.MU)
+        transfer2 = ht.HohmannTransfer(self.SMA/ratio, self.SMA, self.MU)
+
+        result = transfer1.phase_change
+        expected = transfer2.phase_change
+        fail_msg = 'Expected same phase change for same SMAs ratio!'
+
+        self.assertAlmostEqual(result, expected, self.PRECISION, fail_msg,)
 
     def test_SMA_ratio_3(self):
         """Test with final orbit 3 times as high as initial orbit."""
-        SEMI_MAJOR_AXIS = 14253.1
-        self.assertAlmostEqual(
-            ht.Hohmann_phase_angle(SEMI_MAJOR_AXIS, 3*SEMI_MAJOR_AXIS),
-            82.02,
-            2,)
+        ratio = 3
+        transfer = ht.HohmannTransfer(self.SMA, self.SMA*ratio, self.MU)
+
+        result = transfer.phase_change
+        expected = 82.0204102867
+        fail_msg = 'Expected 82 degrees phase change for 1:3 SMAs ratio!'
+
+        self.assertAlmostEqual(result, expected, self.PRECISION, fail_msg,)
 
     def test_SMA_ratio_half(self):
         """Test with final orbit half as high as initial orbit."""
-        SEMI_MAJOR_AXIS = 14253.1
-        self.assertAlmostEqual(
-            ht.Hohmann_phase_angle(SEMI_MAJOR_AXIS, 0.5*SEMI_MAJOR_AXIS),
-            -150.68,
-            2,)
+        ratio = 0.5
+        transfer = ht.HohmannTransfer(self.SMA, self.SMA*ratio, self.MU)
+
+        result = transfer.phase_change
+        expected = -150.68111527572904
+        fail_msg = 'Expected -151 degrees phase change for 2:1 SMAs ratio!'
+
+        self.assertAlmostEqual(result, expected, self.PRECISION, fail_msg,)
 
 
 class Test_time_to_phase(unittest.TestCase):
