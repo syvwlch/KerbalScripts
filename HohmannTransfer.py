@@ -22,7 +22,6 @@ except ConnectionRefusedError:
 
 #  Constants that come in handy during Hohmann transfers.
 KSC_LONGITUDE = 285.425
-MAXIMUM_ECCENTRICITY = 0.01
 
 
 def time_to_phase(phase_angle, period1, period2):
