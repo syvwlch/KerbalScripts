@@ -6,22 +6,6 @@ Nodes can be execute manually or with Node Executor script running in parallel.
 """
 
 from math import pi, sqrt, pow
-import InitialSetUp
-
-#  Logger setup
-MODULE_HANDLE = 'HohmannTransfer'
-logger = InitialSetUp.set_up_logger(MODULE_HANDLE + '.log')
-
-#  KRPC server connection
-try:
-    conn = InitialSetUp.connect_to_krpc_server(MODULE_HANDLE)
-except ConnectionRefusedError:
-    logger.critical('Connection refused.')
-    logger.critical('Please check that KRPC server is running in KSP.')
-    conn = None
-
-#  Constants that come in handy during Hohmann transfers.
-KSC_LONGITUDE = 285.425
 
 
 def time_to_phase(phase_angle, period1, period2):
@@ -129,9 +113,10 @@ class HohmannTransfer:
         except AttributeError:
             print('Could set to target.')
 
-    def set_to_body(self, vessel, body):
-        """Set for synchronous orbit around a body."""
+    def set_to_body(self, vessel):
+        """Set for synchronous orbit around the orbiting body."""
         try:
+            body = vessel.orbit.body
             self.mu = body.gravitational_parameter
             self.initial_sma = vessel.orbit.semi_major_axis
             rotational_period = body.rotational_period

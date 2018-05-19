@@ -1,11 +1,14 @@
 """
-Adds two nodes for a Hohmann transfer to rendez-vous with the current target.
+Adds two nodes for a Hohmann transfer to a given altitude.
 
 Currently checks that the initial orbit is reasonably circular.
 """
 
 from HohmannTransfer import HohmannTransfer
 import InitialSetUp
+
+TARGET_ALTITUDE = 100*1000
+DELAY = 180
 
 #  Logger setup
 MODULE_HANDLE = 'RendezVous'
@@ -23,7 +26,7 @@ logger.info('Transfer to altitude of 100km.')
 vessel = conn.space_center.active_vessel
 
 ht = HohmannTransfer()
-ht.set_to_altitude(vessel, 100*1000)
+ht.set_to_altitude(vessel, TARGET_ALTITUDE)
 
-ht.time_to_start = conn.space_center.ut + 180
+ht.time_to_start = conn.space_center.ut + DELAY
 ht.add_nodes(vessel)

@@ -8,6 +8,10 @@ from HohmannTransfer import HohmannTransfer
 from HohmannTransfer import time_to_phase
 import InitialSetUp
 
+KSC_LONGITUDE = 285.425
+
+target_longitude = KSC_LONGITUDE
+
 #  Logger setup
 MODULE_HANDLE = 'SynchronousOrbit'
 logger = InitialSetUp.set_up_logger(MODULE_HANDLE + '.log')
@@ -20,16 +24,12 @@ except ConnectionRefusedError:
     logger.critical('Please check that KRPC server is running in KSP.')
     conn = None
 
-KSC_LONGITUDE = 285.425
-
-target_longitude = KSC_LONGITUDE
-
 logger.info('Transfer to synchronous orbit around target.')
 vessel = conn.space_center.active_vessel
 body = vessel.orbit.body
 
 ht = HohmannTransfer()
-ht.set_to_body(vessel, body)
+ht.set_to_body(vessel)
 
 rotational_period = body.rotational_period
 rf = body.reference_frame
