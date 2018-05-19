@@ -9,35 +9,6 @@ from math import pi, sqrt, pow
 import krpc
 
 
-def time_to_phase(phase_angle, period1, period2):
-    """Calculate how long to wait for a particular phase angle change."""
-    def clamp_time_to_period(phase_angle, period):
-        """Clamp a phase angle to the interval between zero and abs(period)."""
-        result = phase_angle / 360 * period
-        while result < 0:
-            result = result + abs(period)
-        while result > abs(period):
-            result = result - abs(period)
-        return result
-
-    def relative_period(period1, period2):
-        """Calculate the relative period between two periods."""
-        if period1 == period2:
-            raise ValueError(
-                'There is no relative periods when periods are identical!')
-        elif period1 == 0:
-            period = period2
-        elif period2 == 0:
-            period = period1
-        else:
-            period = (period1*period2)/(period1-period2)
-        return period
-
-    return clamp_time_to_period(
-        phase_angle,
-        relative_period(period1, period2))
-
-
 class HohmannTransfer:
     """Class to create Hohmann transfers."""
 
@@ -67,95 +38,101 @@ class HohmannTransfer:
     def initial_dV(self):
         """Set deltaV for the first maneuver of the transfer."""
         term_1 = self.mu/self.initial_sma
-        term_2 = 2*self.target_sma/(self.initial_sma+self.target_sma)
+        term_2 = self.target_sma/self.transfer_sma
         return sqrt(term_1) * (sqrt(term_2)-1)
 
     @property
     def final_dV(self):
         """Set deltaV for the second maneuver of the transfer."""
         term_1 = self.mu/self.target_sma
-        term_2 = 2*self.initial_sma/(self.initial_sma+self.target_sma)
+        term_2 = self.initial_sma/self.transfer_sma
         return sqrt(term_1) * (1-sqrt(term_2))
 
     @property
     def transfer_time(self):
         """Transit time for the transfer."""
-        term_1 = pi/sqrt(8*self.mu)
-        term_2 = pow(self.initial_sma+self.target_sma, 3/2)
+        term_1 = pi/sqrt(self.mu)
+        term_2 = pow(self.transfer_sma, 3/2)
         return term_1 * term_2
 
-    @property
-    def phase_change(self):
-        """Phase angle change during the transfer."""
-        transfer_sma = (self.initial_sma + self.target_sma)/2
-        orbital_period_ratio = pow(transfer_sma/self.target_sma, 3/2)
-        initial_phase_relative_to_target_orbit = 180
-        transfer_phase_change = 180 * orbital_period_ratio
-        return initial_phase_relative_to_target_orbit - transfer_phase_change
-
-    def period(self, semi_major_axis):
+    def period_from_sma(self, semi_major_axis):
         """Calculate the orbital period from the semi-major axis."""
-        return 2*pi*sqrt*(semi_major_axis**3/self.mu)
+        return 2*pi*sqrt(semi_major_axis**3/self.mu)
+
+    def sma_from_orbital_period(self, orbital_period):
+        """Calculate the semi-major axis fom the orbital period."""
+        return pow(self.mu*(orbital_period/(2*pi))**2, 1/3)
 
     @property
     def initial_period(self):
         """Set initial orbital period."""
-        return self.period(self.initial_sma)
+        return self.period_from_sma(self.initial_sma)
 
     @property
     def target_period(self):
         """Set target orbital period."""
-        return self.period(self.target_sma)
+        return self.period_from_sma(self.target_sma)
 
     @property
     def transfer_period(self):
         """Set transfer orbital period."""
-        return self.period(self.transfer_sma)
+        return self.period_from_sma(self.transfer_sma)
 
-    def time_to_phase(self, phase_angle, period1, period2):
-        """Calculate how long to wait for a particular phase change."""
+    @property
+    def relative_period(self):
+        """Set relative orbital period."""
+        period1 = self.initial_period
+        period2 = self.target_period
         period = (period1*period2) / (period1-period2)
-        result = phase_angle / 360 * period
-        while result < 0:
-            result = result + abs(period)
-        while result > abs(period):
-            result = result - abs(period)
-        return result
+        return period
 
-    def phase_to_altitude(self, altitude, delay):
-        """Set target_sma from the target altitude."""
-        radius = self.vessel.orbit.body.equatorial_radius
-        self.target_sma = radius + altitude
-        self.time_to_start = delay
+    @property
+    def phase_change(self):
+        """Phase change during the transfer."""
+        orbital_period_ratio = self.transfer_period / self.target_period
+        return 180 * (1 - orbital_period_ratio)
 
-    def rendezvous_with_target(self):
-        """Set from a vessel and a target."""
-        target = self.conn.space_center.target_vessel
-        self.target_sma = target.orbit.semi_major_axis
+    def clamp_from_0_to_360(self, angle):
+        """Clamp the value of an angle between zero and 360 degrees."""
+        while angle < 0:
+            angle += 360
+        while angle > 360:
+            angle -= 360
+        return angle
+
+    def time_to_phase(self, target_phase):
+        """Calculate how long to wait for a particular phase change."""
         rf = self.vessel.orbit.body.reference_frame
         vessel_phase = self.vessel.flight(rf).longitude
-        target_phase = target.flight(rf).longitude
-        phase_difference = target_phase - vessel_phase
-        transfer_phase = self.phase_change - phase_difference
-        print(transfer_phase)
-        self.time_to_start = self.time_to_phase(transfer_phase,
-                                                self.vessel.orbit.period,
-                                                target.orbit.period,)
+        phase_angle = self.phase_change + vessel_phase - target_phase
+        phase_angle = self.clamp_from_0_to_360(phase_angle)
+        return phase_angle / 360 * self.relative_period
 
-    def phase_to_synchronous_orbit(self, longitude):
-        """Set for synchronous orbit around the orbiting body."""
-        body = self.vessel.orbit.body
-        rotational_period = body.rotational_period
-        self.target_sma = pow(self.mu*(rotational_period/(2*pi))**2, 1/3)
-        rf = body.reference_frame
-        phase_difference = longitude - self.vessel.flight(rf).longitude
-        transfer_phase = self.phase_change - phase_difference
-        self.time_to_start = self.time_to_phase(transfer_phase,
-                                                self.vessel.orbit.period,
-                                                rotational_period,)
+    def transfer_to_altitude(self, altitude, delay):
+        """Set target_sma & time_to_start from altitude & delay."""
+        radius = self.vessel.orbit.body.equatorial_radius
+        self.target_sma = radius + altitude
+
+        self.time_to_start = delay
+
+    def transfer_to_rendezvous(self):
+        """Set target_sma & time_to_start from current target vessel."""
+        target = self.conn.space_center.target_vessel
+        self.target_sma = target.orbit.semi_major_axis
+
+        rf = self.vessel.orbit.body.reference_frame
+        target_phase = target.flight(rf).longitude
+        self.time_to_start = self.time_to_phase(target_phase)
+
+    def transfer_to_synchronous_orbit(self, longitude):
+        """Set target_sma & time_to_start for synchronous orbit."""
+        rotational_period = self.vessel.orbit.body.rotational_period
+        self.target_sma = self.sma_from_orbital_period(rotational_period)
+
+        self.time_to_start = self.time_to_phase(longitude)
 
     def add_nodes(self):
-        """Add two maneuver nodes to vessel to set up transfer."""
+        """Add two maneuver nodes to set up transfer."""
         start_time = self.conn.space_center.ut + self.time_to_start
         stop_time = start_time + self.transfer_time
         self.vessel.control.add_node(start_time, prograde=self.initial_dV)

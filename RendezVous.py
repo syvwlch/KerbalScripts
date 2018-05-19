@@ -7,5 +7,5 @@ Currently checks that the initial orbit is reasonably circular.
 from HohmannTransfer import HohmannTransfer
 
 ht = HohmannTransfer()
-ht.rendezvous_with_target()
+ht.transfer_to_rendezvous()
 ht.add_nodes()

@@ -10,6 +10,6 @@ KSC_LONGITUDE = 285.425
 target_longitude = KSC_LONGITUDE
 
 ht = HohmannTransfer()
-ht.phase_to_synchronous_orbit(target_longitude)
+ht.transfer_to_synchronous_orbit(target_longitude)
 
 ht.add_nodes()

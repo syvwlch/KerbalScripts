@@ -10,5 +10,5 @@ DELAY = 180
 TARGET_ALTITUDE = 100*1000
 
 ht = HohmannTransfer()
-ht.phase_to_altitude(TARGET_ALTITUDE, DELAY)
+ht.transfer_to_altitude(TARGET_ALTITUDE, DELAY)
 ht.add_nodes()
