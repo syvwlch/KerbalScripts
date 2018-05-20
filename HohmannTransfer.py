@@ -38,8 +38,30 @@ class HohmannTransfer:
     instance creation, like so:
         transfer = HohmannTransfer(target_sma=TARGET_SMA, delay=DELAY)
 
-    See the docstrings for the transfer_to_synchronous_orbit() method and the
-    transfer_to_rendezvous() method for handy shortcuts for common use cases.
+    The following attributes are read/write:
+        - target_sma
+        - target_altitude
+        - target_period
+        - target_phase
+
+    The following attributes are read-only:
+        - initial_sma
+        - transfer_sma
+        - mu
+        - initial_altitude
+        - initial_dV
+        - final_dV
+        - initial_period
+        - transfer_period
+        - relative_period
+        - initial_phase
+        - phase_change
+
+    The following methods can be used as shortcuts for common use cases:
+        - transfer_to_synchronous_orbit()
+        - transfer_to_rendezvous()
+
+    See the relevant docstrings for details.
     """
 
     def __init__(self, target_sma=0, delay=0):
@@ -227,7 +249,7 @@ class HohmannTransfer:
             transfer = HohmannTransfer()
             transfer.transfer_to_synchronous_orbit()
 
-        This will automatically set both the target_sma for you.
+        This will automatically set the target_sma for you.
 
         If you wish to end up over a particular longitude, you can set the
         target_phase to that value, and it will set the delay for you:
