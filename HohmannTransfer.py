@@ -228,7 +228,7 @@ class HohmannTransfer:
         This will automatically set both the target_sma and the delay for you.
 
         If you call this method without a target vessel, it does not change
-        transfer, but prints a warning to the console.
+        the transfer, but prints a warning to the console.
 
         """
         try:
@@ -238,7 +238,7 @@ class HohmannTransfer:
             rf = target.orbit.body.reference_frame
             self.target_phase = target.flight(rf).longitude
         except AttributeError:
-            print('Oops, don\'t forget to set a target vessel first!')
+            print('No target found: transfer unchanged.')
 
     def transfer_to_synchronous_orbit(self):
         """
