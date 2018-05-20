@@ -6,10 +6,13 @@ Currently checks that the initial orbit is reasonably circular.
 
 from HohmannTransfer import HohmannTransfer
 
+transfer = HohmannTransfer()
+
+transfer.transfer_to_synchronous_orbit()
+
 KSC_LONGITUDE = 285.425
-target_longitude = KSC_LONGITUDE
+transfer.target_phase = KSC_LONGITUDE
 
-ht = HohmannTransfer()
-ht.transfer_to_synchronous_orbit(target_longitude)
+print(transfer)
 
-ht.add_nodes()
+transfer.add_nodes()

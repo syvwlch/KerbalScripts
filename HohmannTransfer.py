@@ -1,5 +1,5 @@
 """
-This class creates Hohmann transfer maneuver nodes.
+This module contains the HohmannTransfer class.
 
 Currently assumes circular orbits, especially at the start!
 Nodes can be execute manually or with Node Executor script running in parallel.
@@ -10,14 +10,47 @@ import krpc
 
 
 class HohmannTransfer:
-    """Class to create Hohmann transfers."""
+    """
+    Create Hohmann transfers which can be executed in KSP.
 
-    def __init__(self):
+    A Hohmann transfer consists of two impulsive orbital maneuvers to move
+    a vessel from one circular orbit around a body to another circular orbit
+    around the same body, at a different altitude via an elliptical transfer
+    orbit.
+
+    When you create an instance with no arguments, it starts out being
+    the null transfer, which does not change your orbit:
+        from HohmannTransfer import HohmannTransfer
+        transfer = HohmannTransfer()
+
+    You can then set the target altitude and the delay before starting:
+        transfer.target_altitude = 100*1000  # in meters
+        transfer.delay = 180  # in seconds
+
+    The instance will then provide the deltaV of both maneuvers, as well as
+    the time spent in transfer between the two orbits:
+        print(transfer)
+
+    You can then add nodes to the active vessel for both maneuvers:
+        transfer.add_nodes()
+
+    You can also specify the target semi-major axis and/or the delay during
+    instance creation, like so:
+        transfer = HohmannTransfer(target_sma=TARGET_SMA, delay=DELAY)
+
+    See the docstrings for the transfer_to_synchronous_orbit() method and the
+    transfer_to_rendezvous() method for handy shortcuts for common use cases.
+    """
+
+    def __init__(self, target_sma=0, delay=0):
         """Create a connection to krpc and initialize from active vessel."""
         self.conn = krpc.connect(name=__name__)
         self.vessel = self.conn.space_center.active_vessel
-        self.target_sma = self.vessel.orbit.semi_major_axis
-        self.delay = 0
+        if target_sma == 0:
+            self.target_sma = self.vessel.orbit.semi_major_axis
+        else:
+            self.target_sma = target_sma
+        self.delay = delay
 
     @property
     def initial_sma(self):
@@ -33,6 +66,12 @@ class HohmannTransfer:
     def mu(self):
         """Set the gravitational parameter from the active vessel's orbit."""
         return self.vessel.orbit.body.gravitational_parameter
+
+    @property
+    def initial_altitude(self):
+        """Set the initial altitude."""
+        body_radius = self.vessel.orbit.body.equatorial_radius
+        return self.initial_sma - body_radius
 
     @property
     def target_altitude(self):
@@ -59,13 +98,6 @@ class HohmannTransfer:
         term_1 = self.mu/self.target_sma
         term_2 = self.initial_sma/self.transfer_sma
         return sqrt(term_1) * (1-sqrt(term_2))
-
-    @property
-    def transfer_time(self):
-        """Transit time for the transfer."""
-        term_1 = pi/sqrt(self.mu)
-        term_2 = pow(self.transfer_sma, 3/2)
-        return term_1 * term_2
 
     def period_from_sma(self, semi_major_axis):
         """Calculate the orbital period from the semi-major axis."""
@@ -94,6 +126,11 @@ class HohmannTransfer:
     def transfer_period(self):
         """Set transfer orbital period."""
         return self.period_from_sma(self.transfer_sma)
+
+    @property
+    def transfer_time(self):
+        """Transit time for the transfer."""
+        return self.transfer_period / 2
 
     @property
     def relative_period(self):
@@ -137,19 +174,68 @@ class HohmannTransfer:
         final_phase_difference = self.clamp_from_0_360(final_phase_difference)
         self.delay = final_phase_difference / 360 * self.relative_period
 
+    def __str__(self):
+        """Create the informal string representation of the class."""
+        line = f'Hohmann transfer from '
+        line += f'{self.initial_altitude/1000:5.0f} km altitude to'
+        line += f'{self.target_altitude/1000:5.0f} km altitude:\n'
+        line += f'    1. Wait: {self.delay:7.0f} seconds to '
+        line += f'burn: {self.initial_dV:5.1f} m/s prograde.\n'
+        line += f'    2. Wait: {self.transfer_time:7.0f} seconds to '
+        line += f'burn: {self.final_dV:5.1f} m/s prograde.\n'
+        return line
+
+    def __repr__(self):
+        """Create the formal string representation of the class."""
+        line = f'HohmannTransfer(target_sma='
+        line += f'{self.target_sma}, delay='
+        line += f'{self.delay})'
+        return line
+
     def transfer_to_rendezvous(self):
-        """Set up to rendez-vous with current target vessel."""
-        target = self.conn.space_center.target_vessel
-        self.target_sma = target.orbit.semi_major_axis
+        """
+        Set up to rendez-vous with current target vessel.
 
-        rf = target.orbit.body.reference_frame
-        self.target_phase = target.flight(rf).longitude
+        Once the instance has been initialized, use this method to set up a
+        rendez-vous with the current target vessel:
+            from HohmannTransfer import HohmannTransfer
+            transfer = HohmannTransfer()
+            transfer.transfer_to_rendezvous()
 
-    def transfer_to_synchronous_orbit(self, longitude):
-        """Set up for synchronous orbit."""
+        This will automatically set both the target_sma and the delay for you.
+
+        If you call this method without a target vessel, it does not change
+        transfer, but prints a warning to the console.
+
+        """
+        try:
+            target = self.conn.space_center.target_vessel
+            self.target_sma = target.orbit.semi_major_axis
+
+            rf = target.orbit.body.reference_frame
+            self.target_phase = target.flight(rf).longitude
+        except AttributeError:
+            print('Oops, don\'t forget to set a target vessel first!')
+
+    def transfer_to_synchronous_orbit(self):
+        """
+        Set up a transfer to synchronous orbit.
+
+        Once the instance has been initialized, use this method to set up a
+        transfer to synchronous orbit:
+            from HohmannTransfer import HohmannTransfer
+            transfer = HohmannTransfer()
+            transfer.transfer_to_synchronous_orbit()
+
+        This will automatically set both the target_sma for you.
+
+        If you wish to end up over a particular longitude, you can set the
+        target_phase to that value, and it will set the delay for you:
+            KSC_LONGITUDE = 285.425
+            transfer.target_phase = KSC_LONGITUDE
+        """
         rotational_period = self.vessel.orbit.body.rotational_period
         self.target_period = rotational_period
-        self.target_phase = longitude
 
     def add_nodes(self):
         """Add two maneuver nodes to set up transfer."""

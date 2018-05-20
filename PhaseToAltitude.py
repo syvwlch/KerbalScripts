@@ -6,10 +6,14 @@ Currently checks that the initial orbit is reasonably circular.
 
 from HohmannTransfer import HohmannTransfer
 
-DELAY = 180
-TARGET_ALTITUDE = 100*1000
+transfer = HohmannTransfer()
 
-ht = HohmannTransfer()
-ht.target_altitude = TARGET_ALTITUDE
-ht.delay = DELAY
-ht.add_nodes()
+TARGET_ALTITUDE = 100*1000  # in meters
+transfer.target_altitude = TARGET_ALTITUDE
+
+DELAY = 180  # in seconds
+transfer.delay = DELAY
+
+print(transfer)
+
+transfer.add_nodes()
