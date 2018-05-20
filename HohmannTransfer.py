@@ -23,15 +23,15 @@ class HohmannTransfer:
         from HohmannTransfer import HohmannTransfer
         transfer = HohmannTransfer()
 
-    You can then set the target altitude and the delay before starting:
+    You can set the target altitude and the delay before the first burn:
         transfer.target_altitude = 100*1000  # in meters
         transfer.delay = 180  # in seconds
 
-    The instance will then provide the deltaV of both maneuvers, as well as
-    the time spent in transfer between the two orbits:
+    The transfer will provide the deltaV of both burns, as well as
+    the time spent between the two burns:
         print(transfer)
 
-    You can then add nodes to the active vessel for both maneuvers:
+    You can then add maneuver nodes to the active vessel for both burns:
         transfer.add_nodes()
 
     You can also specify the target semi-major axis and/or the delay during
@@ -40,6 +40,7 @@ class HohmannTransfer:
 
     The following attributes are read/write:
         - target_sma
+        - delay
         - target_altitude
         - target_period
         - target_phase
