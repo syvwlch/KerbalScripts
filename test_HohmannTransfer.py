@@ -208,15 +208,24 @@ class Test_HohmannTransfer_rw_attributes(unittest.TestCase):
         """Check that target_phase sets delay."""
         mock_conn().space_center.active_vessel.orbit.semi_major_axis = 2
         mock_conn().space_center.active_vessel.orbit.body.gravitational_parameter = 1
-        mock_conn().space_center.active_vessel.flight().longitude = 20
+        mock_conn().space_center.active_vessel.flight().longitude = 10
         transfer = HohmannTransfer.HohmannTransfer()
         transfer.target_sma = 3
-        line = f'Old: {transfer.delay:5.1f} '
-        transfer.target_phase = 10
-        line += f'New: {transfer.delay:5.1f}\n'
-        print(line)
-        self.assertAlmostEqual(transfer.target_phase, 10)
-        self.assertAlmostEqual(transfer.delay, 4)
+        # line = f'initial_phase: {transfer.initial_phase:5.1f}\n'
+        # line += f'phase_change: {transfer.phase_change:5.1f}\n'
+        # line += f'target_phase: {transfer.target_phase:5.1f}\n'
+        # line += f'delay: {transfer.delay:5.1f}\n'
+        # print(line)
+        target_phase_baseline = transfer.initial_phase + transfer.phase_change
+        relative_period = abs(transfer.relative_period)
+        transfer.target_phase = -90+target_phase_baseline
+        # line = f'initial_phase: {transfer.initial_phase:5.1f}\n'
+        # line += f'phase_change: {transfer.phase_change:5.1f}\n'
+        # line += f'target_phase: {transfer.target_phase:5.1f}\n'
+        # line += f'delay: {transfer.delay:5.1f}\n'
+        # print(line)
+
+        self.assertAlmostEqual(transfer.delay, 0.75*relative_period, 2)
 
 
 @patch('HohmannTransfer.krpc.connect')
@@ -240,13 +249,13 @@ class Test_HohmannTransfer_private_methods(unittest.TestCase):
         transfer = HohmannTransfer.HohmannTransfer()
         self.assertAlmostEqual(transfer.sma_from_period(16*pi), 4)
 
-    def test_clamp_from_0_360(self, mock_conn):
-        """Check that clamp_from_0_360() works."""
+    def test_clamp_to(self, mock_conn):
+        """Check that clamp_to() works."""
         mock_conn().space_center.active_vessel.orbit.body.gravitational_parameter = 1
         transfer = HohmannTransfer.HohmannTransfer()
-        self.assertEqual(transfer.clamp_from_0_360(-10), 350)
-        self.assertEqual(transfer.clamp_from_0_360(20), 20)
-        self.assertEqual(transfer.clamp_from_0_360(395), 35)
+        self.assertEqual(transfer.clamp_to(-10, 360), 350)
+        self.assertEqual(transfer.clamp_to(20, 360), 20)
+        self.assertEqual(transfer.clamp_to(390, 360), 30)
 
     def test_str(self, mock_conn):
         """Check that the __str__() method works."""

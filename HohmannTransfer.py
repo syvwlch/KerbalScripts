@@ -68,7 +68,7 @@ class HohmannTransfer:
     The following methods are private:
         - period_from_sma()
         - sma_from_period()
-        - clamp_from_0_360()
+        - clamp_to()
         - __str__()
         -__repr()
     """
@@ -177,12 +177,13 @@ class HohmannTransfer:
         rf = self.vessel.orbit.body.reference_frame
         return self.vessel.flight(rf).longitude
 
-    def clamp_from_0_360(self, angle):
-        """Clamp the value of an angle between zero and 360 degrees."""
+    def clamp_to(self, angle, ceiling):
+        """Clamp the value of an angle between zero and ceiling, wrapping around."""
+        ceiling = abs(ceiling)
         while angle < 0:
-            angle += 360
-        while angle > 360:
-            angle -= 360
+            angle += ceiling
+        while angle > ceiling:
+            angle -= ceiling
         return angle
 
     @property
@@ -190,20 +191,24 @@ class HohmannTransfer:
         """Phase change during the transfer."""
         orbital_period_ratio = self.transfer_period / self.target_period
         phase_change = 180 * (1 - orbital_period_ratio)
-        return self.clamp_from_0_360(phase_change)
+        return self.clamp_to(phase_change, 360)
 
     @property
     def target_phase(self):
         """Set the target phase from delay."""
-        return self.delay + self.phase_change
+        delay_phase = 360 * self.delay / self.relative_period
+        initial_phase_difference = self.phase_change - delay_phase
+        target_phase = initial_phase_difference + self.initial_phase
+        target_phase = self.clamp_to(target_phase, 360)
+        return target_phase
 
     @target_phase.setter
     def target_phase(self, target_phase):
         """Set delay from the target phase."""
         initial_phase_difference = target_phase - self.initial_phase
-        final_phase_difference = self.phase_change - initial_phase_difference
-        final_phase_difference = self.clamp_from_0_360(final_phase_difference)
-        self.delay = final_phase_difference / 360 * self.relative_period
+        delay_phase = self.phase_change - initial_phase_difference
+        delay = delay_phase / 360 * self.relative_period
+        self.delay = self.clamp_to(delay, self.relative_period)
 
     def __str__(self):
         """Create the informal string representation of the class."""
