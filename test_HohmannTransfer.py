@@ -203,7 +203,6 @@ class Test_HohmannTransfer_rw_attributes(unittest.TestCase):
         self.assertAlmostEqual(transfer.target_period, 16*pi)
         self.assertAlmostEqual(transfer.target_sma, 4)
 
-    @unittest.expectedFailure
     def test_target_phase(self, mock_conn):
         """Check that target_phase sets delay."""
         mock_conn().space_center.active_vessel.orbit.semi_major_axis = 2
@@ -211,21 +210,19 @@ class Test_HohmannTransfer_rw_attributes(unittest.TestCase):
         mock_conn().space_center.active_vessel.flight().longitude = 10
         transfer = HohmannTransfer.HohmannTransfer()
         transfer.target_sma = 3
-        # line = f'initial_phase: {transfer.initial_phase:5.1f}\n'
-        # line += f'phase_change: {transfer.phase_change:5.1f}\n'
-        # line += f'target_phase: {transfer.target_phase:5.1f}\n'
-        # line += f'delay: {transfer.delay:5.1f}\n'
-        # print(line)
         target_phase_baseline = transfer.initial_phase + transfer.phase_change
-        relative_period = abs(transfer.relative_period)
-        transfer.target_phase = -90+target_phase_baseline
-        # line = f'initial_phase: {transfer.initial_phase:5.1f}\n'
-        # line += f'phase_change: {transfer.phase_change:5.1f}\n'
-        # line += f'target_phase: {transfer.target_phase:5.1f}\n'
-        # line += f'delay: {transfer.delay:5.1f}\n'
-        # print(line)
 
-        self.assertAlmostEqual(transfer.delay, 0.75*relative_period, 2)
+        transfer.target_phase = target_phase_baseline
+        self.assertAlmostEqual(transfer.delay, 0, 2)
+
+        transfer.target_phase = 90 + target_phase_baseline
+        self.assertAlmostEqual(transfer.delay, 0.25 * abs(transfer.relative_period), 2)
+
+        transfer.target_phase = -90 + target_phase_baseline
+        self.assertAlmostEqual(transfer.delay, 0.75 * abs(transfer.relative_period), 2)
+
+        transfer.target_phase = 120 + target_phase_baseline
+        self.assertAlmostEqual(transfer.delay, 1/3 * abs(transfer.relative_period), 2)
 
 
 @patch('HohmannTransfer.krpc.connect')
