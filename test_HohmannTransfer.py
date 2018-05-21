@@ -27,8 +27,8 @@ class Test_HohmannTransfer_init(unittest.TestCase):
     Requires a patch on the KRPC server connection for:
         - active vessel
     """
-
-    def test_no_krpc_connection(self):
+    @patch('HohmannTransfer.krpc.connect', side_effect=ConnectionRefusedError)
+    def test_no_krpc_connection(self, mock_conn):
         """Check that __init__ raises error without a KRPC server."""
         with self.assertRaises(ConnectionRefusedError):
             HohmannTransfer.HohmannTransfer()
@@ -37,7 +37,7 @@ class Test_HohmannTransfer_init(unittest.TestCase):
     def test_krpc_connection(self, mock_conn):
         """Check that __init__ connects to KRPC server."""
         HohmannTransfer.HohmannTransfer()
-        mock_conn.assert_called_once()
+        mock_conn.assert_called_once_with(name='HohmannTransfer')
 
     @patch('HohmannTransfer.krpc.connect')
     def test_init_target_sma_no_karg(self, mock_conn):

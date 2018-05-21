@@ -75,7 +75,7 @@ class HohmannTransfer:
 
     def __init__(self, target_sma=0, delay=0):
         """Create a connection to krpc and initialize from active vessel."""
-        self.conn = krpc.connect(name=__name__)
+        self.conn = krpc.connect(name='HohmannTransfer')
         self.vessel = self.conn.space_center.active_vessel
         if target_sma == 0:
             self.target_sma = self.vessel.orbit.semi_major_axis
