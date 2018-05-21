@@ -54,6 +54,7 @@ class HohmannTransfer:
         - final_dV
         - initial_period
         - transfer_period
+        - transfer_time
         - relative_period
         - initial_phase
         - phase_change
@@ -63,6 +64,13 @@ class HohmannTransfer:
         - transfer_to_rendezvous()
 
     See the relevant docstrings for details.
+
+    The following methods are private:
+        - period_from_sma()
+        - sma_from_period()
+        - clamp_from_0_360()
+        - __str__()
+        -__repr()
     """
 
     def __init__(self, target_sma=0, delay=0):
@@ -126,7 +134,7 @@ class HohmannTransfer:
         """Calculate the orbital period from the semi-major axis."""
         return 2*pi*sqrt(semi_major_axis**3/self.mu)
 
-    def sma_from_orbital_period(self, orbital_period):
+    def sma_from_period(self, orbital_period):
         """Calculate the semi-major axis fom the orbital period."""
         return pow(self.mu*(orbital_period/(2*pi))**2, 1/3)
 
@@ -143,7 +151,7 @@ class HohmannTransfer:
     @target_period.setter
     def target_period(self, target_period):
         """Set target sma from target orbital period."""
-        self.target_sma = self.sma_from_orbital_period(target_period)
+        self.target_sma = self.sma_from_period(target_period)
 
     @property
     def transfer_period(self):
