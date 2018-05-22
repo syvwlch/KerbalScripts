@@ -291,21 +291,21 @@ class Test_HohmannTransfer_private_methods(unittest.TestCase):
         mock_conn().space_center.active_vessel.orbit.body.gravitational_parameter = 10**12
         mock_conn().space_center.active_vessel.orbit.body.equatorial_radius = 1
 
-        tstr = str(HohmannTransfer.HohmannTransfer(target_sma=2*10**6))
+        actual_str = str(HohmannTransfer.HohmannTransfer(target_sma=2*10**6))
 
-        ESTR = 'Hohmann transfer from  1000 km altitude to 2000 km altitude:\n'
-        ESTR += '    1. Wait:       0 seconds to burn: 154.7 m/s prograde.\n'
-        ESTR += '    2. Wait:    5771 seconds to burn: 129.8 m/s prograde.\n'
+        expect_str = 'Hohmann transfer from  1000 km altitude to 2000 km altitude:\n'
+        expect_str += '    1. Wait:       0 seconds to burn: 154.7 m/s prograde.\n'
+        expect_str += '    2. Wait:    5771 seconds to burn: 129.8 m/s prograde.\n'
 
-        self.assertEqual(tstr, ESTR)
+        self.assertEqual(actual_str, expect_str)
 
     def test_repr(self, mock_conn):
         """Check that the __repr__() method works."""
-        tstr = repr(HohmannTransfer.HohmannTransfer(target_sma=2000000.0, delay=100.0))
+        actual_str = repr(HohmannTransfer.HohmannTransfer(target_sma=2000000.0, delay=100.0))
 
-        ESTR = 'HohmannTransfer(target_sma=2000000.0, delay=100.0)'
+        expect_str = 'HohmannTransfer(target_sma=2000000.0, delay=100.0)'
 
-        self.assertEqual(tstr, ESTR)
+        self.assertEqual(actual_str, expect_str)
 
 
 @patch('krpc.connect', spec=True)
@@ -363,7 +363,7 @@ class Test_HohmannTransfer_use_cases(unittest.TestCase):
         self.assertAlmostEqual(transfer.target_period, 20)
 
     def test_add_nodes(self, mock_conn):
-        """Check transfer_to_synchronous_orbit sets target_sma."""
+        """Check add_nodes calls KRPC's add_node method twice with the correct kargs."""
         mock_conn().space_center.active_vessel.orbit.semi_major_axis = 2
         mock_conn().space_center.active_vessel.orbit.body.gravitational_parameter = 1
         mock_conn().space_center.ut = 0
@@ -371,10 +371,10 @@ class Test_HohmannTransfer_use_cases(unittest.TestCase):
         transfer = HohmannTransfer.HohmannTransfer(target_sma=3)
         transfer.add_nodes()
 
-        calls = [call(prograde=transfer.initial_dV, ut=0),
-                 call(prograde=transfer.final_dV, ut=transfer.transfer_time)]
+        expect_calls = [call(prograde=transfer.initial_dV, ut=0),
+                        call(prograde=transfer.final_dV, ut=transfer.transfer_time)]
 
-        mock_conn().space_center.active_vessel.control.add_node.assert_has_calls(calls)
+        mock_conn().space_center.active_vessel.control.add_node.assert_has_calls(expect_calls)
 
 
 if __name__ == '__main__':
