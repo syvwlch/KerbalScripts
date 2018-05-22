@@ -4,6 +4,7 @@ Unit test the HohmannTransfer module.
 Work in progress.
 """
 
+import io
 import unittest
 from unittest.mock import patch
 from math import pi
@@ -20,6 +21,7 @@ class Test_environment(unittest.TestCase):
             raise Exception("Must be using Python 3.")
 
 
+@patch('HohmannTransfer.krpc.connect')
 class Test_HohmannTransfer_init(unittest.TestCase):
     """
     Test the HohmannTransfer class __ini__ method.
@@ -27,38 +29,34 @@ class Test_HohmannTransfer_init(unittest.TestCase):
     Requires a patch on the KRPC server connection for:
         - active vessel
     """
-    @patch('HohmannTransfer.krpc.connect', side_effect=ConnectionRefusedError)
+
     def test_no_krpc_connection(self, mock_conn):
         """Check that __init__ raises error without a KRPC server."""
+        mock_conn.side_effect = ConnectionRefusedError
         with self.assertRaises(ConnectionRefusedError):
             HohmannTransfer.HohmannTransfer()
 
-    @patch('HohmannTransfer.krpc.connect')
     def test_krpc_connection(self, mock_conn):
         """Check that __init__ connects to KRPC server."""
         HohmannTransfer.HohmannTransfer()
         mock_conn.assert_called_once_with(name='HohmannTransfer')
 
-    @patch('HohmannTransfer.krpc.connect')
     def test_init_target_sma_no_karg(self, mock_conn):
         """Check that __init__ w/o karg sets target_sma to inital_sma."""
         mock_conn().space_center.active_vessel.orbit.semi_major_axis = 10
         transfer = HohmannTransfer.HohmannTransfer()
         self.assertEqual(transfer.target_sma, 10)
 
-    @patch('HohmannTransfer.krpc.connect')
     def test_init_target_sma(self, mock_conn):
         """Check that __init__ with target_sma karg sets it."""
         transfer = HohmannTransfer.HohmannTransfer(target_sma=10)
         self.assertEqual(transfer.target_sma, 10)
 
-    @patch('HohmannTransfer.krpc.connect')
     def test_init_delay_no_karg(self, mock_conn):
         """Check that __init__ w/o karg sets delay to zero."""
         transfer = HohmannTransfer.HohmannTransfer()
         self.assertEqual(transfer.delay, 0)
 
-    @patch('HohmannTransfer.krpc.connect')
     def test_init_delay(self, mock_conn):
         """Check that __init__ with delay karg sets it."""
         transfer = HohmannTransfer.HohmannTransfer(delay=10)
@@ -213,16 +211,16 @@ class Test_HohmannTransfer_rw_attributes(unittest.TestCase):
         target_phase_baseline = transfer.initial_phase + transfer.phase_change
 
         transfer.target_phase = target_phase_baseline
-        self.assertAlmostEqual(transfer.delay, 0, 2)
+        self.assertAlmostEqual(transfer.delay, 0)
 
         transfer.target_phase = 90 + target_phase_baseline
-        self.assertAlmostEqual(transfer.delay, 0.25 * abs(transfer.relative_period), 2)
+        self.assertAlmostEqual(transfer.delay, 0.25 * abs(transfer.relative_period))
 
         transfer.target_phase = -90 + target_phase_baseline
-        self.assertAlmostEqual(transfer.delay, 0.75 * abs(transfer.relative_period), 2)
+        self.assertAlmostEqual(transfer.delay, 0.75 * abs(transfer.relative_period))
 
         transfer.target_phase = 120 + target_phase_baseline
-        self.assertAlmostEqual(transfer.delay, 1/3 * abs(transfer.relative_period), 2)
+        self.assertAlmostEqual(transfer.delay, 1/3 * abs(transfer.relative_period))
 
 
 @patch('HohmannTransfer.krpc.connect')
@@ -277,6 +275,64 @@ class Test_HohmannTransfer_private_methods(unittest.TestCase):
         transfer.target_sma = 2*10**6
         tstr = repr(transfer)
         self.assertEqual(tstr, ESTR)
+
+
+@patch('HohmannTransfer.krpc.connect')
+class Test_HohmannTransfer_use_cases(unittest.TestCase):
+    """
+    Test the HohmannTransfer class use case methods.
+
+    Requires a patch on the KRPC server connection for:
+        - active vessel
+        - target vessel
+        - universal time
+    """
+
+    def test_transfer_to_rendezvous_no_target(self, mock_conn):
+        """Check transfer_to_rendezvous does not raise an AttributeError with no target."""
+        mock_conn().space_center.target_vessel = None
+        capturedOutput = io.StringIO()
+        sys.stdout = capturedOutput
+        transfer = HohmannTransfer.HohmannTransfer()
+        try:
+            transfer.transfer_to_rendezvous()
+        except AttributeError:
+            self.fail('Should have caught the AttributeError')
+        sys.stdout = sys.__stdout__
+        self.assertEqual('No target found: transfer unchanged.\n', capturedOutput.getvalue())
+
+    def test_transfer_to_rendezvous(self, mock_conn):
+        """Check that transfer_to_rendezvous sets target_sma & delay with a target."""
+        mock_conn().space_center.active_vessel.orbit.semi_major_axis = 4
+        mock_conn().space_center.active_vessel.orbit.body.gravitational_parameter = 1
+        mock_conn().space_center.active_vessel.flight().longitude = 0
+
+        mock_conn().space_center.target_vessel.orbit.semi_major_axis = 9
+        mock_conn().space_center.target_vessel.flight().longitude = 20
+
+        transfer = HohmannTransfer.HohmannTransfer()
+        transfer.transfer_to_rendezvous()
+        self.assertAlmostEqual(transfer.target_sma, 9)
+        self.assertAlmostEqual(transfer.target_phase, 20)
+
+    def test_transfer_to_synchronous_orbit(self, mock_conn):
+        """Check transfer_to_synchronous_orbit sets target_sma."""
+        mock_conn().space_center.active_vessel.orbit.semi_major_axis = 4
+        mock_conn().space_center.active_vessel.orbit.body.gravitational_parameter = 1
+        mock_conn().space_center.active_vessel.orbit.body.rotational_period = 20
+
+        transfer = HohmannTransfer.HohmannTransfer()
+        transfer.transfer_to_synchronous_orbit()
+        self.assertAlmostEqual(transfer.target_period, 20)
+
+    def test_add_nodes(self, mock_conn):
+        """Check transfer_to_synchronous_orbit sets target_sma."""
+        mock_conn().space_center.active_vessel.orbit.semi_major_axis = 4
+        mock_conn().space_center.active_vessel.orbit.body.gravitational_parameter = 1
+        transfer = HohmannTransfer.HohmannTransfer()
+        transfer.target_sma = 9
+        transfer.add_nodes()
+        self.fail('Finish the test!')
 
 
 if __name__ == '__main__':
