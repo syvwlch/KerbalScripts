@@ -20,7 +20,7 @@ class Test_environment(unittest.TestCase):
         self.assertGreaterEqual(sys.version_info[0], 3)
 
 
-@patch('HohmannTransfer.krpc.connect', spec=True)
+@patch('krpc.connect', spec=True)
 class Test_HohmannTransfer_init(unittest.TestCase):
     """
     Test the HohmannTransfer class __ini__ method.
@@ -69,7 +69,7 @@ class Test_HohmannTransfer_init(unittest.TestCase):
         self.assertEqual(transfer.delay, 10)
 
 
-@patch('HohmannTransfer.krpc.connect', spec=True)
+@patch('krpc.connect', spec=True)
 class Test_HohmannTransfer_ro_attributes(unittest.TestCase):
     """
     Test the HohmannTransfer class read-only attributes.
@@ -183,7 +183,7 @@ class Test_HohmannTransfer_ro_attributes(unittest.TestCase):
         self.assertAlmostEqual(transfer.phase_change, 43.0693606237085)
 
 
-@patch('HohmannTransfer.krpc.connect', spec=True)
+@patch('krpc.connect', spec=True)
 class Test_HohmannTransfer_rw_attributes(unittest.TestCase):
     """
     Test the HohmannTransfer class read/write attributes.
@@ -253,7 +253,7 @@ class Test_HohmannTransfer_rw_attributes(unittest.TestCase):
             self.assertAlmostEqual(transfer.delay, 1/3 * abs(transfer.relative_period))
 
 
-@patch('HohmannTransfer.krpc.connect', spec=True)
+@patch('krpc.connect', spec=True)
 class Test_HohmannTransfer_private_methods(unittest.TestCase):
     """
     Test the HohmannTransfer class representations methods.
@@ -309,7 +309,7 @@ class Test_HohmannTransfer_private_methods(unittest.TestCase):
         self.assertEqual(tstr, ESTR)
 
 
-@patch('HohmannTransfer.krpc.connect', spec=True)
+@patch('krpc.connect', spec=True)
 class Test_HohmannTransfer_use_cases(unittest.TestCase):
     """
     Test the HohmannTransfer class use case methods.
