@@ -264,17 +264,14 @@ class Test_HohmannTransfer_private_methods(unittest.TestCase):
         mock_conn().space_center.active_vessel.orbit.semi_major_axis = 10**6
         mock_conn().space_center.active_vessel.orbit.body.gravitational_parameter = 10**12
         mock_conn().space_center.active_vessel.orbit.body.equatorial_radius = 1
-        transfer = HohmannTransfer.HohmannTransfer()
-        transfer.target_sma = 2*10**6
+        transfer = HohmannTransfer.HohmannTransfer(target_sma=2*10**6)
         tstr = str(transfer)
         self.assertEqual(tstr, ESTR)
 
     def test_repr(self, mock_conn):
         """Check that the __repr__() method works."""
         ESTR = 'HohmannTransfer(target_sma=2000000.0, delay=100.0)'
-        transfer = HohmannTransfer.HohmannTransfer()
-        transfer.target_sma = 2.0*10**6
-        transfer.delay = 100.0
+        transfer = HohmannTransfer.HohmannTransfer(target_sma=2000000.0, delay=100.0)
         tstr = repr(transfer)
         self.assertEqual(tstr, ESTR)
 
