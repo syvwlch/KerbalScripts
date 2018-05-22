@@ -17,8 +17,7 @@ class Test_environment(unittest.TestCase):
 
     def test_python_version(self):
         """Make sure the python version is 3.x."""
-        if sys.version_info[0] < 3:
-            raise Exception("Must be using Python 3.")
+        self.assertGreaterEqual(sys.version_info[0], 3)
 
 
 @patch('HohmannTransfer.krpc.connect', spec=True)
