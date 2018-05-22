@@ -202,7 +202,7 @@ class Test_HohmannTransfer_rw_attributes(unittest.TestCase):
         self.assertAlmostEqual(transfer.target_sma, 4)
 
     def test_target_phase(self, mock_conn):
-        """Check that target_phase sets delay."""
+        """Check that target_phase sets itself (clamped) as well as delay."""
         mock_conn().space_center.active_vessel.orbit.semi_major_axis = 2
         mock_conn().space_center.active_vessel.orbit.body.gravitational_parameter = 1
         mock_conn().space_center.active_vessel.flight().longitude = 10
@@ -211,15 +211,19 @@ class Test_HohmannTransfer_rw_attributes(unittest.TestCase):
         target_phase_baseline = transfer.initial_phase + transfer.phase_change
 
         transfer.target_phase = target_phase_baseline
+        self.assertAlmostEqual(transfer.target_phase, target_phase_baseline)
         self.assertAlmostEqual(transfer.delay, 0)
 
         transfer.target_phase = 90 + target_phase_baseline
+        self.assertAlmostEqual(transfer.target_phase, 90 + target_phase_baseline)
         self.assertAlmostEqual(transfer.delay, 0.25 * abs(transfer.relative_period))
 
         transfer.target_phase = -90 + target_phase_baseline
+        self.assertAlmostEqual(transfer.target_phase, 270 + target_phase_baseline)
         self.assertAlmostEqual(transfer.delay, 0.75 * abs(transfer.relative_period))
 
-        transfer.target_phase = 120 + target_phase_baseline
+        transfer.target_phase = 480 + target_phase_baseline
+        self.assertAlmostEqual(transfer.target_phase, 120 + target_phase_baseline)
         self.assertAlmostEqual(transfer.delay, 1/3 * abs(transfer.relative_period))
 
 
@@ -267,12 +271,10 @@ class Test_HohmannTransfer_private_methods(unittest.TestCase):
 
     def test_repr(self, mock_conn):
         """Check that the __repr__() method works."""
-        ESTR = 'HohmannTransfer(target_sma=2000000, delay=0)'
-        mock_conn().space_center.active_vessel.orbit.semi_major_axis = 10**6
-        mock_conn().space_center.active_vessel.orbit.body.gravitational_parameter = 10**12
-        mock_conn().space_center.active_vessel.orbit.body.equatorial_radius = 1
+        ESTR = 'HohmannTransfer(target_sma=2000000.0, delay=100.0)'
         transfer = HohmannTransfer.HohmannTransfer()
-        transfer.target_sma = 2*10**6
+        transfer.target_sma = 2.0*10**6
+        transfer.delay = 100.0
         tstr = repr(transfer)
         self.assertEqual(tstr, ESTR)
 
