@@ -366,17 +366,13 @@ class Test_HohmannTransfer_use_cases(unittest.TestCase):
         """Check transfer_to_synchronous_orbit sets target_sma."""
         mock_conn().space_center.active_vessel.orbit.semi_major_axis = 2
         mock_conn().space_center.active_vessel.orbit.body.gravitational_parameter = 1
-        mock_conn().space_center.ut = 4
+        mock_conn().space_center.ut = 0
 
         transfer = HohmannTransfer.HohmannTransfer(target_sma=3)
         transfer.add_nodes()
 
-        dv1 = transfer.initial_dV
-        t1 = 4
-        dv2 = transfer.final_dV
-        t2 = t1 + transfer.transfer_time
-        calls = [call(prograde=dv1, ut=t1),
-                 call(prograde=dv2, ut=t2)]
+        calls = [call(prograde=transfer.initial_dV, ut=0),
+                 call(prograde=transfer.final_dV, ut=transfer.transfer_time)]
 
         mock_conn().space_center.active_vessel.control.add_node.assert_has_calls(calls)
 
