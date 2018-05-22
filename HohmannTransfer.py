@@ -275,7 +275,6 @@ class HohmannTransfer:
 
     def add_nodes(self):
         """Add two maneuver nodes to set up transfer."""
-        self.vessel = self.conn.space_center.active_vessel
         start_time = self.conn.space_center.ut + self.delay
         stop_time = start_time + self.transfer_time
         self.vessel.control.add_node(start_time, prograde=self.initial_dV)
