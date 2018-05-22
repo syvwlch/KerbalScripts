@@ -4,9 +4,8 @@ Unit test the HohmannTransfer module.
 Work in progress.
 """
 
-import io
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, call
 from math import pi
 import sys
 import HohmannTransfer
@@ -324,16 +323,17 @@ class Test_HohmannTransfer_use_cases(unittest.TestCase):
         """Check transfer_to_rendezvous w/o target warns but does not raise AttributeError."""
         mock_conn().space_center.target_vessel = None
 
-        capturedOutput = io.StringIO()
-        sys.stdout = capturedOutput
         transfer = HohmannTransfer.HohmannTransfer()
-        try:
-            transfer.transfer_to_rendezvous()
-        except AttributeError:
-            self.fail('Should have caught the AttributeError')
-        sys.stdout = sys.__stdout__
 
-        self.assertEqual('No target found: transfer unchanged.\n', capturedOutput.getvalue())
+        with self.subTest('Does not raise AttributeError'):
+            with patch('sys.stdout') as mock_stdout:
+                try:
+                    transfer.transfer_to_rendezvous()
+                except AttributeError:
+                    self.fail('Should have caught the AttributeError')
+
+        with self.subTest('Writes warning to stdout'):
+            mock_stdout.write.assert_has_calls([call('No target found: transfer unchanged.')])
 
     def test_transfer_to_rendezvous(self, mock_conn):
         """Check that transfer_to_rendezvous sets target_sma & delay with a target."""
