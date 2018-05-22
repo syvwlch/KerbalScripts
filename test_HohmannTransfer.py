@@ -81,9 +81,7 @@ class Test_HohmannTransfer_ro_attributes(unittest.TestCase):
     def test_transfer_sma(self, mock_conn):
         """Check that transfer_sma is the average of initial & target smas."""
         mock_conn().space_center.active_vessel.orbit.semi_major_axis = 10
-        transfer = HohmannTransfer.HohmannTransfer()
-        self.assertEqual(transfer.transfer_sma, 10)
-        transfer.target_sma = 30
+        transfer = HohmannTransfer.HohmannTransfer(target_sma=30)
         self.assertEqual(transfer.transfer_sma, 20)
 
     def test_mu(self, mock_conn):
@@ -103,18 +101,14 @@ class Test_HohmannTransfer_ro_attributes(unittest.TestCase):
         """Check that initial_dV is set from active vessel & target_sma."""
         mock_conn().space_center.active_vessel.orbit.semi_major_axis = 2
         mock_conn().space_center.active_vessel.orbit.body.gravitational_parameter = 8
-        transfer = HohmannTransfer.HohmannTransfer()
-        self.assertEqual(transfer.initial_dV, 0)
-        transfer.target_sma = 16
+        transfer = HohmannTransfer.HohmannTransfer(target_sma=16)
         self.assertAlmostEqual(transfer.initial_dV, 2/3)
 
     def test_final_dV(self, mock_conn):
         """Check that final_dV is set from active vessel & target_sma."""
         mock_conn().space_center.active_vessel.orbit.semi_major_axis = 16
         mock_conn().space_center.active_vessel.orbit.body.gravitational_parameter = 8
-        transfer = HohmannTransfer.HohmannTransfer()
-        self.assertEqual(transfer.final_dV, 0)
-        transfer.target_sma = 2
+        transfer = HohmannTransfer.HohmannTransfer(target_sma=2)
         self.assertAlmostEqual(transfer.final_dV, -2/3)
 
     def test_initial_period(self, mock_conn):
@@ -128,24 +122,21 @@ class Test_HohmannTransfer_ro_attributes(unittest.TestCase):
         """Check that transfer_period is set from active vessel & target_sma."""
         mock_conn().space_center.active_vessel.orbit.semi_major_axis = 2
         mock_conn().space_center.active_vessel.orbit.body.gravitational_parameter = 1
-        transfer = HohmannTransfer.HohmannTransfer()
-        transfer.target_sma = 6
+        transfer = HohmannTransfer.HohmannTransfer(target_sma=6)
         self.assertAlmostEqual(transfer.transfer_period, 16*pi)
 
     def test_transfer_time(self, mock_conn):
         """Check that transfer_time is set from active vessel & target_sma."""
         mock_conn().space_center.active_vessel.orbit.semi_major_axis = 2
         mock_conn().space_center.active_vessel.orbit.body.gravitational_parameter = 1
-        transfer = HohmannTransfer.HohmannTransfer()
-        transfer.target_sma = 6
+        transfer = HohmannTransfer.HohmannTransfer(target_sma=6)
         self.assertAlmostEqual(transfer.transfer_time, 8*pi)
 
     def test_relative_period(self, mock_conn):
         """Check that relative_period is set from active vessel & target_sma."""
         mock_conn().space_center.active_vessel.orbit.semi_major_axis = 4
         mock_conn().space_center.active_vessel.orbit.body.gravitational_parameter = 1
-        transfer = HohmannTransfer.HohmannTransfer()
-        transfer.target_sma = 9
+        transfer = HohmannTransfer.HohmannTransfer(target_sma=9)
         self.assertAlmostEqual(transfer.relative_period, pi*16*54/(16-54))
 
     def test_initial_phase(self, mock_conn):
@@ -158,9 +149,7 @@ class Test_HohmannTransfer_ro_attributes(unittest.TestCase):
         """Check that phase_change is set from active vessel & target_sma."""
         mock_conn().space_center.active_vessel.orbit.semi_major_axis = 2
         mock_conn().space_center.active_vessel.orbit.body.gravitational_parameter = 1
-        transfer = HohmannTransfer.HohmannTransfer()
-        self.assertEqual(transfer.phase_change, 0)
-        transfer.target_sma = 3
+        transfer = HohmannTransfer.HohmannTransfer(target_sma=3)
         self.assertAlmostEqual(transfer.phase_change, 43.0693606237085)
 
 
@@ -206,8 +195,7 @@ class Test_HohmannTransfer_rw_attributes(unittest.TestCase):
         mock_conn().space_center.active_vessel.orbit.semi_major_axis = 2
         mock_conn().space_center.active_vessel.orbit.body.gravitational_parameter = 1
         mock_conn().space_center.active_vessel.flight().longitude = 10
-        transfer = HohmannTransfer.HohmannTransfer()
-        transfer.target_sma = 3
+        transfer = HohmannTransfer.HohmannTransfer(target_sma=3)
         target_phase_baseline = transfer.initial_phase + transfer.phase_change
 
         transfer.target_phase = target_phase_baseline
@@ -329,8 +317,7 @@ class Test_HohmannTransfer_use_cases(unittest.TestCase):
         """Check transfer_to_synchronous_orbit sets target_sma."""
         mock_conn().space_center.active_vessel.orbit.semi_major_axis = 4
         mock_conn().space_center.active_vessel.orbit.body.gravitational_parameter = 1
-        transfer = HohmannTransfer.HohmannTransfer()
-        transfer.target_sma = 9
+        transfer = HohmannTransfer.HohmannTransfer(target_sma=9)
         transfer.add_nodes()
         self.fail('Finish the test!')
 
