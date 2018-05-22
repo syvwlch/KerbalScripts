@@ -1,172 +1,138 @@
-# Simple node execution script
+"""Simple node execution script."""
 
 from math import exp
 import time
 import krpc
 
-conn = krpc.connect(name='NodeExecutor')
 
-# Set up the UI
-canvas = conn.ui.stock_canvas
+class NodeExecutor:
+    """Automatically execute the next maneuver node."""
+    def __init__(self, minimum_burn_time=4):
+        """Create a connection to krpc and initialize from active vessel."""
+        self.conn = krpc.connect(name='NodeExecutor')
+        self.minimum_burn_time = minimum_burn_time
 
-# Get the size of the game window in pixels
-screen_size = canvas.rect_transform.size
+    @property
+    def vessel(self):
+        """Retrieve the active vessel."""
+        self.vessel = self.conn.space_center.active_vessel
 
-# Add a panel to contain the UI elements
-panel = canvas.add_panel()
+    @property
+    def autopilot(self):
+        """Retrieve the autopilot."""
+        self.ap = self.vessel.auto_pilot
 
-# Position the panel relative to the center of the screen
-rect = panel.rect_transform
-width = 400
-height = 80
-padding_w = 0
-Padding_h = 65 + height
-rect.size = (width, height)
-rect.position = (width/2+padding_w-screen_size[0]/2, screen_size[1]/2-(height/2+Padding_h))
+    @property
+    def ut(self):
+        """Set up a stream for universal time."""
+        return self.conn.add_stream(getattr, conn.space_center, 'ut')
 
-# Add some text displaying messages to user
-text = panel.add_text("...")
-text.rect_transform.size = (380, 30)
-text.rect_transform.position = (0, +20)
-text.color = (1, 1, 1)
-text.size = 18
+    @property
+    def has_node(self):
+        """Check that the active vessel has a next node."""
+        return len(self.vessel.control.nodes) > 0
 
-# defining a display function to update terminal & UI at the same time
+    @property
+    def node(self):
+        """Retrieve the next node."""
+        return self.vessel.control.nodes[0]
 
+    @property
+    def delta_v(self):
+        """Retrieve the node's deltaV."""
+        return self.node.delta_v
 
-def update_UI(message='...'):
-    print(message)
-    text.content = message
-    return
+    @property
+    def burn_time_at_max_thrust(self):
+        """Calculate burn time at max thrust using the rocket equation."""
+        F = self.vessel.available_thrust
+        Isp = self.vessel.specific_impulse * 9.82
+        m0 = self.vessel.mass
+        m1 = m0 / exp(self.delta_v/Isp)
+        flow_rate = F / Isp
+        return (m0 - m1) / flow_rate
 
+    def clamp(value, floor, ceiling):
+        """Clamps the value between the ceiling and the floor."""
+        top = max(ceiling, floor)
+        bottom = min(ceiling, floor)
+        return max(bottom, min(top, value))
 
-# setting up streams & aliases
-ut = conn.add_stream(getattr, conn.space_center, 'ut')
-vessel = conn.space_center.active_vessel
-ap = vessel.auto_pilot
+    @property
+    def maximum_throttle(self):
+        """Set the maximum throttle to keep burn time above minimum."""
+        return min(1, self.burn_time/burn_time_min)
 
-# defining a function to retrieve the next node
+    @property
+    def maximum_throttle(self):
+        """Set the maximum throttle to keep burn time above minimum."""
+        return min(1, self.burn_time/burn_time_min)
+        burn_time = max(self.burn_time, burn_time_min)
 
+    @property
+    def maximum_throttle(self):
+        """Set the maximum throttle to keep burn time above minimum."""
+        return min(1, self.burn_time/burn_time_min)
+        burn_ut = self.ut - (burn_time/2)
 
-def get_node(require_click=True):
-    # retrieve the next node
-    if len(vessel.control.nodes) == 0:
-        update_UI('No node found!')
-        while True:
-            if len(vessel.control.nodes) > 0:
-                break
-            time.sleep(0.1)
-    node = vessel.control.nodes[0]
+    def execute_node(node):
+        """Define the actual node execution logic."""
+        # setting a max throttle to keep burn time above minimum
+        throttle_max = min(1, self.burn_time/burn_time_min)
+        burn_time = max(self.burn_time, burn_time_min)
+        burn_ut = self.ut - (burn_time/2)
 
-    # wait for button click to execute node
-    if require_click:
-        update_UI('Click to execute node')
-        button = panel.add_button("Execute")
-        button.rect_transform.size = (100, 30)
-        button.rect_transform.position = (135, -20)
-        button_clicked = conn.add_stream(getattr, button, 'clicked')
-        while True:
-            if button_clicked():
-                button.clicked = False
-                break
-            time.sleep(0.1)
-        button.remove()
-    return node
+        # warp closer to burn
+        lead_time = 300
+        if ut() < burn_ut - lead_time:
+            print(f'Warping to {lead_time:3.0} seconds before burn.')
+            conn.space_center.warp_to(burn_ut - lead_time)
 
-# defining the actual node execution logic
-
-
-def execute_node(node):
-    abort = False
-
-    # calculating burn time (using rocket equation)
-    delta_v = node.delta_v
-    F = vessel.available_thrust
-    Isp = vessel.specific_impulse * 9.82
-    m0 = vessel.mass
-    m1 = m0 / exp(delta_v/Isp)
-    flow_rate = F / Isp
-    burn_time = (m0 - m1) / flow_rate
-
-    # setting a max throttle to keep burn time above minimum
-    burn_time_min = 4
-    throttle_max = min(1, burn_time/burn_time_min)
-    burn_time = max(burn_time, burn_time_min)
-
-    # point to maneuver
-    update_UI('Aligning to burn')
-    ap.reference_frame = node.reference_frame
-    ap.target_direction = (0, 1, 0)
-    ap.target_roll = float('nan')
-    ap.engage()
-    time.sleep(0.1)
-    ap.wait()
-
-    # warp to burn
-    burn_ut = node.ut - (burn_time/2.)
-    lead_time = 10  # see if you can estimate how long it would take to align
-    if ut() < burn_ut - lead_time:
-        update_UI('Warping to node')
-        conn.space_center.warp_to(burn_ut - lead_time)
-    while ut() < burn_ut:
-        pass
-
-    # executing node
-    # obeys throttle_max to help with smaller maneuvers
-    # abortable
-    # auto-aborts if autopilot heading error exceeds 20 degrees
-    # throttles down linearly for last 20% of dV
-    update_UI('Executing burn')
-    remaining_burn = conn.add_stream(node.remaining_burn_vector, node.reference_frame)
-    vessel.control.throttle = throttle_max
-    button = panel.add_button("Abort")
-    button.rect_transform.size = (100, 30)
-    button.rect_transform.position = (135, -20)
-    button_clicked = conn.add_stream(getattr, button, 'clicked')
-    delta_v_finetuning = delta_v * 0.2
-    while True:
-        vessel.control.throttle = throttle_max * min(
-            1,
-            remaining_burn()[1]/delta_v_finetuning)
-        if ap.error > 20:
-            update_UI('Auto-abort!!!')
-            abort = True
-            break
-        if button_clicked():
-            update_UI('Manual-abort!!!')
-            abort = True
-            break
-        if remaining_burn()[1] < 0.04:
-            update_UI('Burn complete')
-            break
-        time.sleep(0.01)
-    vessel.control.throttle = 0.0
-
-    # remove the abort button
-    button.remove()
-
-    # wait for button click to remove the node & release autopilot
-    update_UI('Click to delete node')
-    button = panel.add_button("Delete")
-    button.rect_transform.size = (100, 30)
-    button.rect_transform.position = (135, -20)
-    button_clicked = conn.add_stream(getattr, button, 'clicked')
-    while True:
-        if button_clicked():
-            button.clicked = False
-            break
+        # align with burn vector
+        print('Aligning to burn')
+        ap.reference_frame = node.reference_frame
+        ap.target_direction = (0, 1, 0)
+        ap.target_roll = float('nan')
+        ap.engage()
         time.sleep(0.1)
-    button.remove()
-    ap.disengage()
-    node.remove()
+        ap.wait()
 
-    # say goodbye
-    update_UI('Have a safe flight!')
-    time.sleep(1)
-    return
+        # warp closer to burn
+        lead_time = 5
+        if ut() < burn_ut - lead_time:
+            print(f'Warping to {lead_time:3.0} seconds before burn.')
+            conn.space_center.warp_to(burn_ut - lead_time)
+
+        while ut() < burn_ut:
+            pass
+
+        # executing node
+        # obeys throttle_max to help with smaller maneuvers
+        # auto-aborts if autopilot heading error exceeds 20 degrees
+        # throttles down linearly for last 20% of dV
+        print('Executing burn')
+        dV_left = conn.add_stream(node.dV_left_vector, node.reference_frame)
+        vessel.control.throttle = throttle_max
+        delta_v_finetune = delta_v * 0.2
+        while True:
+            throttle = throttle_max * clamp(dV_left()[1]/delta_v_finetune, 0.01, 1)
+            vessel.control.throttle = throttle
+            if ap.error > 20:
+                print('Auto-abort!!!')
+                break
+            if dV_left()[1] < 0.04:
+                print('Burn complete')
+                break
+            time.sleep(0.01)
+
+        # kill throttle, remove the node & release autopilot
+        vessel.control.throttle = 0.0
+        ap.disengage()
+        node.remove()
+        return
 
 
 # main loop
 if __name__ == "__main__":
-    while True:
+    if has_node():
         execute_node(get_node())
