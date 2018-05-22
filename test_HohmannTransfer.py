@@ -287,24 +287,24 @@ class Test_HohmannTransfer_private_methods(unittest.TestCase):
 
     def test_str(self, mock_conn):
         """Check that the __str__() method works."""
-        ESTR = 'Hohmann transfer from  1000 km altitude to 2000 km altitude:\n'
-        ESTR += '    1. Wait:       0 seconds to burn: 154.7 m/s prograde.\n'
-        ESTR += '    2. Wait:    5771 seconds to burn: 129.8 m/s prograde.\n'
-
         mock_conn().space_center.active_vessel.orbit.semi_major_axis = 10**6
         mock_conn().space_center.active_vessel.orbit.body.gravitational_parameter = 10**12
         mock_conn().space_center.active_vessel.orbit.body.equatorial_radius = 1
 
-        transfer = HohmannTransfer.HohmannTransfer(target_sma=2*10**6)
-        tstr = str(transfer)
+        tstr = str(HohmannTransfer.HohmannTransfer(target_sma=2*10**6))
+
+        ESTR = 'Hohmann transfer from  1000 km altitude to 2000 km altitude:\n'
+        ESTR += '    1. Wait:       0 seconds to burn: 154.7 m/s prograde.\n'
+        ESTR += '    2. Wait:    5771 seconds to burn: 129.8 m/s prograde.\n'
 
         self.assertEqual(tstr, ESTR)
 
     def test_repr(self, mock_conn):
         """Check that the __repr__() method works."""
+        tstr = repr(HohmannTransfer.HohmannTransfer(target_sma=2000000.0, delay=100.0))
+
         ESTR = 'HohmannTransfer(target_sma=2000000.0, delay=100.0)'
-        transfer = HohmannTransfer.HohmannTransfer(target_sma=2000000.0, delay=100.0)
-        tstr = repr(transfer)
+
         self.assertEqual(tstr, ESTR)
 
 
@@ -332,8 +332,9 @@ class Test_HohmannTransfer_use_cases(unittest.TestCase):
                 except AttributeError:
                     self.fail('Should have caught the AttributeError')
 
+        calls = [call('No target found: transfer unchanged.')]
         with self.subTest('Writes warning to stdout'):
-            mock_stdout.write.assert_has_calls([call('No target found: transfer unchanged.')])
+            mock_stdout.write.assert_has_calls(calls)
 
     def test_transfer_to_rendezvous(self, mock_conn):
         """Check that transfer_to_rendezvous sets target_sma & delay with a target."""
@@ -361,16 +362,23 @@ class Test_HohmannTransfer_use_cases(unittest.TestCase):
 
         self.assertAlmostEqual(transfer.target_period, 20)
 
-    @unittest.expectedFailure
     def test_add_nodes(self, mock_conn):
         """Check transfer_to_synchronous_orbit sets target_sma."""
-        mock_conn().space_center.active_vessel.orbit.semi_major_axis = 4
+        mock_conn().space_center.active_vessel.orbit.semi_major_axis = 2
         mock_conn().space_center.active_vessel.orbit.body.gravitational_parameter = 1
+        mock_conn().space_center.ut = 4
 
-        transfer = HohmannTransfer.HohmannTransfer(target_sma=9)
+        transfer = HohmannTransfer.HohmannTransfer(target_sma=3)
         transfer.add_nodes()
 
-        self.fail('Finish the test!')
+        dv1 = transfer.initial_dV
+        t1 = 4
+        dv2 = transfer.final_dV
+        t2 = t1 + transfer.transfer_time
+        calls = [call(prograde=dv1, ut=t1),
+                 call(prograde=dv2, ut=t2)]
+
+        mock_conn().space_center.active_vessel.control.add_node.assert_has_calls(calls)
 
 
 if __name__ == '__main__':
