@@ -7,35 +7,23 @@ import krpc
 
 class NodeExecutor:
     """Automatically execute the next maneuver node."""
-    def __init__(self, minimum_burn_time=4):
+
+    def __init__(self):
         """Create a connection to krpc and initialize from active vessel."""
         self.conn = krpc.connect(name='NodeExecutor')
-        self.minimum_burn_time = minimum_burn_time
-
-    @property
-    def vessel(self):
-        """Retrieve the active vessel."""
         self.vessel = self.conn.space_center.active_vessel
-
-    @property
-    def autopilot(self):
-        """Retrieve the autopilot."""
         self.ap = self.vessel.auto_pilot
+        self.node = self.vessel.control.nodes[0]
 
     @property
     def ut(self):
         """Set up a stream for universal time."""
-        return self.conn.add_stream(getattr, conn.space_center, 'ut')
+        return self.conn.add_stream(getattr, self.conn.space_center, 'ut')
 
     @property
     def has_node(self):
         """Check that the active vessel has a next node."""
         return len(self.vessel.control.nodes) > 0
-
-    @property
-    def node(self):
-        """Retrieve the next node."""
-        return self.vessel.control.nodes[0]
 
     @property
     def delta_v(self):
@@ -52,7 +40,7 @@ class NodeExecutor:
         flow_rate = F / Isp
         return (m0 - m1) / flow_rate
 
-    def clamp(value, floor, ceiling):
+    def clamp(self, value, floor, ceiling):
         """Clamps the value between the ceiling and the floor."""
         top = max(ceiling, floor)
         bottom = min(ceiling, floor)
@@ -61,63 +49,59 @@ class NodeExecutor:
     @property
     def maximum_throttle(self):
         """Set the maximum throttle to keep burn time above minimum."""
-        return min(1, self.burn_time/burn_time_min)
+        return min(1, self.burn_time_at_max_thrust/self.minimum_burn_time)
 
     @property
-    def maximum_throttle(self):
-        """Set the maximum throttle to keep burn time above minimum."""
-        return min(1, self.burn_time/burn_time_min)
-        burn_time = max(self.burn_time, burn_time_min)
+    def burn_time(self):
+        """Set the burn time based on maximum throttle."""
+        return max(self.burn_time_at_max_thrust, self.minimum_burn_time)
 
     @property
-    def maximum_throttle(self):
-        """Set the maximum throttle to keep burn time above minimum."""
-        return min(1, self.burn_time/burn_time_min)
-        burn_ut = self.ut - (burn_time/2)
+    def burn_ut(self):
+        """Set the time to start the burn."""
+        return self.node.ut - self.burn_time/2
 
-    def execute_node(node):
+    def execute_node(self, minimum_burn_time=4):
         """Define the actual node execution logic."""
-        # setting a max throttle to keep burn time above minimum
-        throttle_max = min(1, self.burn_time/burn_time_min)
-        burn_time = max(self.burn_time, burn_time_min)
-        burn_ut = self.ut - (burn_time/2)
-
+        self.minimum_burn_time = minimum_burn_time
         # warp closer to burn
-        lead_time = 300
-        if ut() < burn_ut - lead_time:
-            print(f'Warping to {lead_time:3.0} seconds before burn.')
-            conn.space_center.warp_to(burn_ut - lead_time)
+        warp_time = self.burn_ut - 180
+        if self.ut() < warp_time:
+            print(f'Warping closer to burn.')
+            self.conn.space_center.warp_to(warp_time)
 
         # align with burn vector
         print('Aligning to burn')
-        ap.reference_frame = node.reference_frame
-        ap.target_direction = (0, 1, 0)
-        ap.target_roll = float('nan')
-        ap.engage()
+        self.ap.reference_frame = self.node.reference_frame
+        self.ap.target_direction = (0, 1, 0)
+        self.ap.target_roll = float('nan')
+        self.ap.engage()
         time.sleep(0.1)
-        ap.wait()
+        self.ap.wait()
 
-        # warp closer to burn
-        lead_time = 5
-        if ut() < burn_ut - lead_time:
-            print(f'Warping to {lead_time:3.0} seconds before burn.')
-            conn.space_center.warp_to(burn_ut - lead_time)
+        # warp to burn
+        warp_time = self.burn_ut - 5
+        if self.ut() < warp_time:
+            print(f'Warping to burn.')
+            self.conn.space_center.warp_to(warp_time)
 
-        while ut() < burn_ut:
+        while self.ut() < self.burn_ut:
             pass
 
         # executing node
         # obeys throttle_max to help with smaller maneuvers
         # auto-aborts if autopilot heading error exceeds 20 degrees
-        # throttles down linearly for last 20% of dV
+        # throttles down linearly for last 10% of dV
         print('Executing burn')
-        dV_left = conn.add_stream(node.dV_left_vector, node.reference_frame)
-        vessel.control.throttle = throttle_max
-        delta_v_finetune = delta_v * 0.2
+        dV_left = self.conn.add_stream(self.node.remaining_burn_vector,
+                                       self.node.reference_frame,)
+        self.vessel.control.throttle = self.maximum_throttle
+        delta_v_finetune = self.delta_v * 0.1
         while True:
-            throttle = throttle_max * clamp(dV_left()[1]/delta_v_finetune, 0.01, 1)
-            vessel.control.throttle = throttle
-            if ap.error > 20:
+            throttle = self.clamp(dV_left()[1]/delta_v_finetune, 0.05, 1)
+            throttle *= self.maximum_throttle
+            self.vessel.control.throttle = throttle
+            if self.ap.error > 20:
                 print('Auto-abort!!!')
                 break
             if dV_left()[1] < 0.04:
@@ -126,13 +110,14 @@ class NodeExecutor:
             time.sleep(0.01)
 
         # kill throttle, remove the node & release autopilot
-        vessel.control.throttle = 0.0
-        ap.disengage()
-        node.remove()
+        self.vessel.control.throttle = 0.0
+        self.ap.disengage()
+        self.node.remove()
         return
 
 
 # main loop
 if __name__ == "__main__":
-    if has_node():
-        execute_node(get_node())
+    hal9000 = NodeExecutor()
+    if hal9000.has_node:
+        hal9000.execute_node(minimum_burn_time=4)
