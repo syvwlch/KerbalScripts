@@ -1,4 +1,4 @@
-"""Simple node execution script."""
+"""Simple node execution class."""
 
 from math import exp
 import time
@@ -8,22 +8,23 @@ import krpc
 class NodeExecutor:
     """Automatically execute the next maneuver node."""
 
-    def __init__(self):
+    def __init__(self, minimum_burn_time=4):
         """Create a connection to krpc and initialize from active vessel."""
         self.conn = krpc.connect(name='NodeExecutor')
         self.vessel = self.conn.space_center.active_vessel
-        self.ap = self.vessel.auto_pilot
-        self.node = self.vessel.control.nodes[0]
+        self.minimum_burn_time = minimum_burn_time
+        assert(minimum_burn_time >= 0)
+        return
 
     @property
-    def ut(self):
-        """Set up a stream for universal time."""
-        return self.conn.add_stream(getattr, self.conn.space_center, 'ut')
+    def node(self):
+        """Retrieve the first node in nodes[]."""
+        return self.vessel.control.nodes[0]
 
     @property
     def has_node(self):
         """Check that the active vessel has a next node."""
-        return len(self.vessel.control.nodes) > 0
+        return self.node is not None
 
     @property
     def delta_v(self):
@@ -49,6 +50,8 @@ class NodeExecutor:
     @property
     def maximum_throttle(self):
         """Set the maximum throttle to keep burn time above minimum."""
+        if self.minimum_burn_time == 0:
+            return 1
         return min(1, self.burn_time_at_max_thrust/self.minimum_burn_time)
 
     @property
@@ -61,63 +64,106 @@ class NodeExecutor:
         """Set the time to start the burn."""
         return self.node.ut - self.burn_time/2
 
-    def execute_node(self, minimum_burn_time=4):
-        """Define the actual node execution logic."""
-        self.minimum_burn_time = minimum_burn_time
-        # warp closer to burn
-        warp_time = self.burn_ut - 180
-        if self.ut() < warp_time:
-            print(f'Warping closer to burn.')
-            self.conn.space_center.warp_to(warp_time)
-
-        # align with burn vector
+    def align_to_burn(self):
+        """Set the autopilot to align with the burn vector."""
         print('Aligning to burn')
+        self.ap = self.vessel.auto_pilot
         self.ap.reference_frame = self.node.reference_frame
         self.ap.target_direction = (0, 1, 0)
         self.ap.target_roll = float('nan')
         self.ap.engage()
         time.sleep(0.1)
         self.ap.wait()
+        return
 
-        # warp to burn
-        warp_time = self.burn_ut - 5
-        if self.ut() < warp_time:
-            print(f'Warping to burn.')
+    def warp_safely_to_burn(self, margin):
+        """Warp to margin seconds before burn_time."""
+        warp_time = self.burn_ut - margin
+        if self.conn.space_center.ut < warp_time:
+            print(f'Warping to {margin:3.0f} seconds before burn.')
             self.conn.space_center.warp_to(warp_time)
+        return
 
-        while self.ut() < self.burn_ut:
+    def wait_until_ut(self, ut_threshold):
+        """Wait until ut is greater than or equal to ut_threshold."""
+        # naive approach
+        while self.conn.space_center.ut < ut_threshold:
             time.sleep(0.01)
 
-        # executing node
-        # obeys throttle_max to help with smaller maneuvers
-        # auto-aborts if autopilot heading error exceeds 20 degrees
-        # throttles down linearly for last 10% of dV
+        # # complex approach with server-side condition
+        # ut = self.conn.add_stream(getattr, self.conn.space_center, 'ut')
+        #
+        # # Create an expression on the server
+        # expr = self.conn.krpc.Expression.greater_than(
+        #     self.conn.krpc.Expression.call(ut),
+        #     self.conn.krpc.Expression.constant_double(ut_threshold))
+        #
+        # # Create an event from the expression
+        # event = self.conn.krpc.add_event(expr)
+        #
+        # # Wait on the event
+        # with event.condition:
+        #     event.wait()
+        return
+
+    def burn_baby_burn(self):
+        """Burn until dV_left is nearly zero, or autopilot.error is too great."""
+        self.wait_until_ut(self.burn_ut)
         print('Executing burn')
+
+        # set up stream for remaining_burn_vector
         dV_left = self.conn.add_stream(self.node.remaining_burn_vector,
                                        self.node.reference_frame,)
-        self.vessel.control.throttle = self.maximum_throttle
-        delta_v_finetune = self.delta_v * 0.1
+
+        # burn loop
+        # TODO: make the loop wait on new values from server
+        # should be more accurate than a fixed 10ms wait
         while True:
-            throttle = self.clamp(dV_left()[1]/delta_v_finetune, 0.05, 1)
-            throttle *= self.maximum_throttle
-            self.vessel.control.throttle = throttle
+            # calculate the ratio of remaining dV to starting dV
+            dV_ratio = dV_left()[1] / self.delta_v
+            # decrease linearly to 5% of throttle_max for last 10% of dV
+            throttle = self.clamp(dV_ratio/0.10, floor=0.05, ceiling=1)
+            # obey throttle_max to keep burn time above minimum_burn_time
+            self.vessel.control.throttle = self.maximum_throttle * throttle
+            # break out if autopilot steering error exceeds 20 degrees
             if self.ap.error > 20:
                 print('Auto-abort!!!')
                 break
+            # break out if dV_left rounds down to 0.0
             if dV_left()[1] < 0.04:
                 print('Burn complete')
                 break
+            # wait 10ms before looping around
             time.sleep(0.01)
 
-        # kill throttle, remove the node & release autopilot
+        # kill throttle & stream
         self.vessel.control.throttle = 0.0
+        dV_left.remove()
+        return
+
+    def cleanup(self):
+        """Remove the node & disengage autopilot."""
+        # TODO: engage SAS stability control if it exists
         self.ap.disengage()
         self.node.remove()
+        return
+
+    def execute_node(self):
+        """Define the node execution logic."""
+        self.align_to_burn()
+        self.warp_safely_to_burn(margin=180)
+
+        self.align_to_burn()
+        self.warp_safely_to_burn(margin=5)
+
+        self.burn_baby_burn()
+
+        self.cleanup()
         return
 
 
 # main loop
 if __name__ == "__main__":
-    hal9000 = NodeExecutor()
-    if hal9000.has_node:
-        hal9000.execute_node(minimum_burn_time=4)
+    hal9000 = NodeExecutor(minimum_burn_time=4)
+    while hal9000.has_node:
+        hal9000.execute_node()
