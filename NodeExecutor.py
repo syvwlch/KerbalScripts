@@ -108,6 +108,9 @@ class NodeExecutor:
 
     def burn_baby_burn(self):
         """Burn until dV_left is nearly zero, or autopilot.error is too great."""
+        # TODO: Consider making a non-blocking version of this, or at least
+        # bringing in logic to stage as necessary.
+
         self.wait_until_ut(self.burn_ut)
         print('Executing burn')
 
@@ -116,14 +119,16 @@ class NodeExecutor:
                                        self.node.reference_frame,)
 
         # burn loop
-        # TODO: make the loop wait on new values from server
+        # TODO: consider making the loop wait on new values from server
         # should be more accurate than a fixed 10ms wait
+        # TODO: consider setting a server side condition to the part of the
+        # burn where the throttle is at 100% of maximum_throttle
         while True:
             # calculate the ratio of remaining dV to starting dV
             dV_ratio = dV_left()[1] / self.delta_v
             # decrease linearly to 5% of throttle_max for last 10% of dV
             throttle = self.clamp(dV_ratio/0.10, floor=0.05, ceiling=1)
-            # obey throttle_max to keep burn time above minimum_burn_time
+            # obey maximum_throttle to keep burn time above minimum_burn_time
             self.vessel.control.throttle = self.maximum_throttle * throttle
             # break out if autopilot steering error exceeds 20 degrees
             if self.ap.error > 20:
