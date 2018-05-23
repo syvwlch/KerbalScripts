@@ -25,11 +25,12 @@ class Test_HohmannTransfer_init(unittest.TestCase):
     """
 
     def test_no_krpc_connection(self, mock_conn):
-        """Check that __init__ raises error without a KRPC server."""
-        mock_conn.side_effect = ConnectionRefusedError
-
-        with self.assertRaises(ConnectionRefusedError):
+        """Check that __init__ raises ConnectionRefusedError if it can't reach KRPC server."""
+        try:
             HohmannTransfer.HohmannTransfer()
+        except Exception as e:
+            self.assertIsInstance(e, ConnectionRefusedError)
+        return
 
     def test_krpc_connection(self, mock_conn):
         """Check that __init__ connects to KRPC server."""
