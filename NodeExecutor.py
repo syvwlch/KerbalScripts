@@ -86,7 +86,7 @@ class NodeExecutor:
             self.conn.space_center.warp_to(warp_time)
 
         while self.ut() < self.burn_ut:
-            pass
+            time.sleep(0.01)
 
         # executing node
         # obeys throttle_max to help with smaller maneuvers
