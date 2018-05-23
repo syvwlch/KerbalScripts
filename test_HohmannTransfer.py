@@ -1,8 +1,4 @@
-"""
-Unit test the HohmannTransfer module.
-
-Work in progress.
-"""
+"""Unit test the HohmannTransfer class."""
 
 import unittest
 from unittest.mock import patch, call
