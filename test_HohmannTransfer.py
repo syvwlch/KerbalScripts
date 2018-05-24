@@ -15,7 +15,6 @@ class Test_environment(unittest.TestCase):
         self.assertGreaterEqual(sys.version_info[0], 3)
 
 
-@patch('krpc.connect', spec=True)
 class Test_HohmannTransfer_init(unittest.TestCase):
     """
     Test the HohmannTransfer class __ini__ method.
@@ -24,7 +23,7 @@ class Test_HohmannTransfer_init(unittest.TestCase):
         - active vessel
     """
 
-    def test_no_krpc_connection(self, mock_conn):
+    def test_no_krpc_connection(self):
         """Check that __init__ raises ConnectionRefusedError if it can't reach KRPC server."""
         try:
             HohmannTransfer.HohmannTransfer()
@@ -32,12 +31,14 @@ class Test_HohmannTransfer_init(unittest.TestCase):
             self.assertIsInstance(e, ConnectionRefusedError)
         return
 
+    @patch('krpc.connect', spec=True)
     def test_krpc_connection(self, mock_conn):
         """Check that __init__ connects to KRPC server."""
         HohmannTransfer.HohmannTransfer()
 
         mock_conn.assert_called_once_with(name='HohmannTransfer')
 
+    @patch('krpc.connect', spec=True)
     def test_init_target_sma_no_karg(self, mock_conn):
         """Check that __init__ w/o karg sets target_sma to inital_sma."""
         mock_conn().space_center.active_vessel.orbit.semi_major_axis = 10
@@ -46,18 +47,21 @@ class Test_HohmannTransfer_init(unittest.TestCase):
 
         self.assertEqual(transfer.target_sma, 10)
 
+    @patch('krpc.connect', spec=True)
     def test_init_target_sma(self, mock_conn):
         """Check that __init__ with target_sma karg sets it."""
         transfer = HohmannTransfer.HohmannTransfer(target_sma=10)
 
         self.assertEqual(transfer.target_sma, 10)
 
+    @patch('krpc.connect', spec=True)
     def test_init_delay_no_karg(self, mock_conn):
         """Check that __init__ w/o karg sets delay to zero."""
         transfer = HohmannTransfer.HohmannTransfer()
 
         self.assertEqual(transfer.delay, 0)
 
+    @patch('krpc.connect', spec=True)
     def test_init_delay(self, mock_conn):
         """Check that __init__ with delay karg sets it."""
         transfer = HohmannTransfer.HohmannTransfer(delay=10)
