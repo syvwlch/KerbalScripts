@@ -19,7 +19,9 @@ class NodeExecutor:
     @property
     def node(self):
         """Retrieve the first node in nodes[]."""
-        return self.vessel.control.nodes[0]
+        if len(self.vessel.control.nodes) > 0:
+            return self.vessel.control.nodes[0]
+        return None
 
     @property
     def has_node(self):
@@ -86,25 +88,8 @@ class NodeExecutor:
 
     def wait_until_ut(self, ut_threshold):
         """Wait until ut is greater than or equal to ut_threshold."""
-        # naive approach
         while self.conn.space_center.ut < ut_threshold:
             time.sleep(0.01)
-
-        # # complex approach with server-side condition
-        # ut = self.conn.add_stream(getattr, self.conn.space_center, 'ut')
-        #
-        # # Create an expression on the server
-        # expr = self.conn.krpc.Expression.greater_than(
-        #     self.conn.krpc.Expression.call(ut),
-        #     self.conn.krpc.Expression.constant_double(ut_threshold))
-        #
-        # # Create an event from the expression
-        # event = self.conn.krpc.add_event(expr)
-        #
-        # # Wait on the event
-        # with event.condition:
-        #     event.wait()
-        return
 
     def burn_baby_burn(self):
         """Burn until dV_left is nearly zero, or autopilot.error is too great."""
@@ -112,37 +97,55 @@ class NodeExecutor:
         # bringing in logic to stage as necessary.
 
         self.wait_until_ut(self.burn_ut)
-        print('Executing burn')
+        print(f'Burn starting at T0 - {(self.node.ut-self.conn.space_center.ut):.0f} seconds')
+        print(f'    {self.delta_v:3.1f} m/s to go')
 
         # set up stream for remaining_burn_vector
         dV_left = self.conn.add_stream(self.node.remaining_burn_vector,
                                        self.node.reference_frame,)
 
         # burn loop
-        # TODO: consider making the loop wait on new values from server
-        # should be more accurate than a fixed 10ms wait
-        # TODO: consider setting a server side condition to the part of the
-        # burn where the throttle is at 100% of maximum_throttle
+        thrust = self.vessel.available_thrust
         while True:
             # calculate the ratio of remaining dV to starting dV
             dV_ratio = dV_left()[1] / self.delta_v
+
             # decrease linearly to 5% of throttle_max for last 10% of dV
             throttle = self.clamp(dV_ratio/0.10, floor=0.05, ceiling=1)
             # obey maximum_throttle to keep burn time above minimum_burn_time
             self.vessel.control.throttle = self.maximum_throttle * throttle
+
+            # stage if needed
+            thrust_ratio = self.vessel.available_thrust / thrust
+            if thrust_ratio < 0.9:
+                self.vessel.control.throttle = 0.0
+                self.time.sleep(0.1)
+                self.vessel.control.activate_next_stage()
+                print('Staged')
+                self.time.sleep(0.1)
+                self.maximum_throttle = self.clamp(self.maximum_throttle/thrust_ratio,
+                                                   floor=0,
+                                                   ceiling=1,)
+                self.vessel.control.throttle = self.maximum_throttle * throttle
+                thrust = self.vessel.available_thrust
+
             # break out if autopilot steering error exceeds 20 degrees
             if self.ap.error > 20:
-                print('Auto-abort!!!')
+                print('Overshot')
                 break
+
             # break out if dV_left rounds down to 0.0
             if dV_left()[1] < 0.04:
-                print('Burn complete')
+                print('Undershot')
                 break
+
             # wait 10ms before looping around
             time.sleep(0.01)
 
         # kill throttle & stream
         self.vessel.control.throttle = 0.0
+        print(f'Burn complete at T0 + {(self.conn.space_center.ut-self.node.ut):.0f} seconds')
+        print(f'    {dV_left()[1]:3.1f} m/s over/under')
         dV_left.remove()
         return
 
@@ -172,3 +175,4 @@ if __name__ == "__main__":
     hal9000 = NodeExecutor(minimum_burn_time=4)
     while hal9000.has_node:
         hal9000.execute_node()
+    print('No nodes left to execute.')
