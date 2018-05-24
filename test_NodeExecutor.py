@@ -198,10 +198,10 @@ class Test_NodeExecutor_methods(unittest.TestCase):
     def setUp(self):
         """Set up the mock vessel."""
         node = namedtuple('node', 'delta_v ut reference_frame')
-        NODE0 = node(delta_v=10, ut=2000, reference_frame='RF')
+        self.NODE0 = node(delta_v=10, ut=2000, reference_frame='RF')
 
         control = namedtuple('control', 'nodes')
-        self.CONTROL0 = control(nodes=(NODE0,))
+        self.CONTROL0 = control(nodes=(self.NODE0,))
 
         vessel = namedtuple('vessel', 'control available_thrust specific_impulse mass')
         self.VESSEL0 = vessel(control=self.CONTROL0,
@@ -236,20 +236,35 @@ class Test_NodeExecutor_methods(unittest.TestCase):
                 Hal9000.warp_safely_to_burn(margin=MARGIN)
                 mock_conn().space_center.warp_to.assert_called_with(BURN_UT - MARGIN)
 
-        calls = [call(f'Warping to {MARGIN:3.0f} seconds before burn.')]
         with self.subTest('writes message to stdout'):
+            calls = [call(f'Warping to {MARGIN:3.0f} seconds before burn.')]
             mock_stdout.write.assert_has_calls(calls)
 
-    def test_align_to_burn(self, mock_conn):
+    @patch('sys.stdout')
+    def test_align_to_burn(self, mock_stdout, mock_conn):
         """Check that align_to_burn sets up and engages the autopilot."""
         mock_conn().space_center.active_vessel.control = self.CONTROL0
         Hal9000 = NodeExecutor.NodeExecutor()
 
-        with patch('sys.stdout') as mock_stdout:
-            Hal9000.align_to_burn()
-        calls = [call('Aligning to burn')]
+        Hal9000.align_to_burn()
+
+        with self.subTest('sets the auto_pilot attributes'):
+            actual_ref = mock_conn().space_center.active_vessel.auto_pilot.reference_frame
+            actual_dir = mock_conn().space_center.active_vessel.auto_pilot.target_direction
+            actual_rol = mock_conn().space_center.active_vessel.auto_pilot.target_roll
+
+            self.assertEqual(actual_ref, self.NODE0.reference_frame)
+            self.assertEqual(actual_dir, (0, 1, 0))
+            self.assertNotEqual(actual_rol, actual_rol)
+
+        with self.subTest('engages auto_pilot & waits for alignment'):
+            CONN_CALLS = [call.auto_pilot.engage(),
+                          call.auto_pilot.wait()]
+            mock_conn().space_center.active_vessel.assert_has_calls(CONN_CALLS)
+
         with self.subTest('writes message to stdout'):
-            mock_stdout.write.assert_has_calls(calls)
+            STDOUT_CALLS = [call.write('Aligning to burn')]
+            mock_stdout.assert_has_calls(STDOUT_CALLS)
 
 
 if __name__ == '__main__':
