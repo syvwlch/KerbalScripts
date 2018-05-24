@@ -152,6 +152,7 @@ class NodeExecutor:
     def cleanup(self):
         """Remove the node & disengage autopilot."""
         # TODO: engage SAS stability control if it exists
+        self.ap = self.vessel.auto_pilot
         self.ap.disengage()
         self.node.remove()
         return
