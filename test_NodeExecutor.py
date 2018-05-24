@@ -163,6 +163,7 @@ class Test_NodeExecutor_ro_attributes(unittest.TestCase):
     def test_maximum_throttle_and_burn_time(self, mock_conn):
         """Check that maximum_throttle & burn_time are set from minimum_burn_time."""
         mock_conn().space_center.active_vessel = self.VESSEL0
+
         with self.subTest('burn time greater than minimum'):
             Hal9000 = NodeExecutor.NodeExecutor(minimum_burn_time=self.BURN_TIME0/2)
             self.assertEqual(Hal9000.maximum_throttle, 1)
@@ -181,9 +182,8 @@ class Test_NodeExecutor_ro_attributes(unittest.TestCase):
     def test_burn_ut(self, mock_conn):
         """Check that burn_ut is set properly."""
         mock_conn().space_center.active_vessel = self.VESSEL0
-        with self.subTest('burn time greater than minimum'):
-            Hal9000 = NodeExecutor.NodeExecutor()
-            self.assertAlmostEqual(Hal9000.burn_ut, self.NODE0.ut - Hal9000.burn_time/2)
+        Hal9000 = NodeExecutor.NodeExecutor()
+        self.assertAlmostEqual(Hal9000.burn_ut, self.NODE0.ut - Hal9000.burn_time/2)
 
 
 @patch('krpc.connect', spec=True)
@@ -196,7 +196,7 @@ class Test_NodeExecutor_methods(unittest.TestCase):
     """
 
     def setUp(self):
-        """Set up the mock vessel."""
+        """Set up the mock objects."""
         node = namedtuple('node', 'delta_v ut reference_frame')
         self.NODE0 = node(delta_v=10, ut=2000, reference_frame='RF')
 
@@ -211,34 +211,9 @@ class Test_NodeExecutor_methods(unittest.TestCase):
 
     def tearDown(self):
         """Delete the mock objects."""
+        del(self.NODE0)
+        del(self.CONTROL0)
         del(self.VESSEL0)
-
-    def test_warp_safely_to_burn(self, mock_conn):
-        """Check that warp_safely_to_burn calls warp_to() only if necessary."""
-        mock_conn().space_center.active_vessel = self.VESSEL0
-        MARGIN = 10
-        Hal9000 = NodeExecutor.NodeExecutor()
-        BURN_UT = Hal9000.burn_ut
-
-        with self.subTest('node already past'):
-            mock_conn().space_center.ut = BURN_UT
-            Hal9000.warp_safely_to_burn(margin=MARGIN)
-            mock_conn().space_center.warp_to.assert_not_called()
-
-        with self.subTest('node is now'):
-            mock_conn().space_center.ut = BURN_UT - MARGIN
-            Hal9000.warp_safely_to_burn(margin=MARGIN)
-            mock_conn().space_center.warp_to.assert_not_called()
-
-        with self.subTest('node still in future'):
-            with patch('sys.stdout') as mock_stdout:
-                mock_conn().space_center.ut = BURN_UT - MARGIN - 1
-                Hal9000.warp_safely_to_burn(margin=MARGIN)
-                mock_conn().space_center.warp_to.assert_called_with(BURN_UT - MARGIN)
-
-        with self.subTest('writes message to stdout'):
-            calls = [call(f'Warping to {MARGIN:3.0f} seconds before burn.')]
-            mock_stdout.write.assert_has_calls(calls)
 
     @patch('sys.stdout')
     def test_align_to_burn(self, mock_stdout, mock_conn):
@@ -250,21 +225,64 @@ class Test_NodeExecutor_methods(unittest.TestCase):
 
         with self.subTest('sets the auto_pilot attributes'):
             actual_ref = mock_conn().space_center.active_vessel.auto_pilot.reference_frame
-            actual_dir = mock_conn().space_center.active_vessel.auto_pilot.target_direction
-            actual_rol = mock_conn().space_center.active_vessel.auto_pilot.target_roll
-
             self.assertEqual(actual_ref, self.NODE0.reference_frame)
+            actual_dir = mock_conn().space_center.active_vessel.auto_pilot.target_direction
             self.assertEqual(actual_dir, (0, 1, 0))
+            actual_rol = mock_conn().space_center.active_vessel.auto_pilot.target_roll
             self.assertNotEqual(actual_rol, actual_rol)
 
         with self.subTest('engages auto_pilot & waits for alignment'):
-            CONN_CALLS = [call.auto_pilot.engage(),
-                          call.auto_pilot.wait()]
+            CONN_CALLS = [call.auto_pilot.engage(), call.auto_pilot.wait()]
             mock_conn().space_center.active_vessel.assert_has_calls(CONN_CALLS)
 
         with self.subTest('writes message to stdout'):
             STDOUT_CALLS = [call.write('Aligning to burn')]
             mock_stdout.assert_has_calls(STDOUT_CALLS)
+
+    @patch('sys.stdout')
+    def test_warp_safely_to_burn(self, mock_stdout, mock_conn):
+        """Check that warp_safely_to_burn calls warp_to() only if necessary."""
+        mock_conn().space_center.active_vessel = self.VESSEL0
+        MARGIN = 10
+        Hal9000 = NodeExecutor.NodeExecutor()
+        BURN_UT = Hal9000.burn_ut
+
+        with self.subTest('node already past'):
+            mock_conn().space_center.ut = BURN_UT
+            Hal9000.warp_safely_to_burn(margin=MARGIN)
+            mock_conn().space_center.warp_to.assert_not_called()
+            mock_stdout.write.assert_not_called()
+
+        with self.subTest('node is now'):
+            mock_conn().space_center.ut = BURN_UT - MARGIN
+            Hal9000.warp_safely_to_burn(margin=MARGIN)
+            mock_conn().space_center.warp_to.assert_not_called()
+            mock_stdout.write.assert_not_called()
+
+        with self.subTest('node still in future'):
+            mock_conn().space_center.ut = BURN_UT - MARGIN - 1
+            Hal9000.warp_safely_to_burn(margin=MARGIN)
+            mock_conn().space_center.warp_to.assert_called_with(BURN_UT - MARGIN)
+            calls = [call(f'Warping to {MARGIN:3.0f} seconds before burn.')]
+            mock_stdout.write.assert_has_calls(calls)
+
+    def test_wait_until_ut(self, mock_conn):
+        """Check that wait_until_ut doesn't call time.sleep if ut is now or already past."""
+        Hal9000 = NodeExecutor.NodeExecutor()
+
+        with patch('time.sleep') as mock_sleep:
+            mock_conn().space_center.ut = 100
+            Hal9000.wait_until_ut(ut_threshold=10)
+            mock_sleep().assert_not_called()
+
+        with patch('time.sleep', side_effect=StopIteration):
+            mock_conn().space_center.ut = 10
+            called = False
+            try:
+                Hal9000.wait_until_ut(ut_threshold=100)
+            except StopIteration:
+                called = True
+            self.assertTrue(called)
 
 
 if __name__ == '__main__':
