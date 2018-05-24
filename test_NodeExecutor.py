@@ -78,6 +78,22 @@ class Test_NodeExecutor_ro_attributes(unittest.TestCase):
         self.node0 = node(delta_v=10, ut=20)
         self.node1 = node(delta_v=30, ut=40)
 
+        control = namedtuple('control', 'nodes')
+        self.control0 = control(nodes=(self.node0, self.node1))
+        self.control1 = control(nodes=(self.node1,))
+
+        vessel = namedtuple('vessel', 'control available_thrust specific_impulse mass')
+        self.vessel0 = vessel(control=self.control0,
+                              available_thrust=100,
+                              specific_impulse=200,
+                              mass=300,)
+        self.burn_time0 = 29.9
+        self.vessel1 = vessel(control=self.control1,
+                              available_thrust=200000,
+                              specific_impulse=800,
+                              mass=40000000,)
+        self.burn_time1 = 5988.6
+
     def tearDown(self):
         """Delete the mock objects."""
         del(self.node0)
@@ -85,17 +101,17 @@ class Test_NodeExecutor_ro_attributes(unittest.TestCase):
 
     def test_node(self, mock_conn):
         """Check that node is the first node from active vessel."""
-        with self.subTest(nodes=()):
+        with self.subTest('zero nodes'):
             mock_conn().space_center.active_vessel.control.nodes = ()
             Hal9000 = NodeExecutor.NodeExecutor()
             self.assertEqual(Hal9000.node, None)
 
-        with self.subTest('One node'):
+        with self.subTest('one node'):
             mock_conn().space_center.active_vessel.control.nodes = (self.node0,)
             Hal9000 = NodeExecutor.NodeExecutor()
             self.assertEqual(Hal9000.node, self.node0)
 
-        with self.subTest('Two nodes'):
+        with self.subTest('two nodes'):
             mock_conn().space_center.active_vessel.control.nodes = (self.node0, self.node1)
             Hal9000 = NodeExecutor.NodeExecutor()
             self.assertEqual(Hal9000.node, self.node0)
@@ -119,18 +135,46 @@ class Test_NodeExecutor_ro_attributes(unittest.TestCase):
 
     def test_delta_v(self, mock_conn):
         """Check that delta_v is set from the node."""
-        mock_conn().space_center.active_vessel.control.nodes = (self.node0,)
+        mock_conn().space_center.active_vessel = self.vessel0
         Hal9000 = NodeExecutor.NodeExecutor()
         self.assertEqual(Hal9000.delta_v, self.node0.delta_v)
 
     def test_burn_time_at_max_thrust(self, mock_conn):
         """Check that burn_time_at_max_thrust is set from the node and active vessel."""
-        mock_conn().space_center.active_vessel.control.nodes = (self.node0,)
-        mock_conn().space_center.active_vessel.available_thrust = 10
-        mock_conn().space_center.active_vessel.specific_impulse = 20
-        mock_conn().space_center.active_vessel.mass = 30
-        Hal9000 = NodeExecutor.NodeExecutor()
-        self.assertEqual(Hal9000.burn_time_at_max_thrust, 10)
+        with self.subTest('first set of values'):
+            mock_conn().space_center.active_vessel = self.vessel0
+            Hal9000 = NodeExecutor.NodeExecutor()
+            self.assertAlmostEqual(Hal9000.burn_time_at_max_thrust, self.burn_time0, 1)
+
+        with self.subTest('second set of values'):
+            mock_conn().space_center.active_vessel = self.vessel1
+            Hal9000 = NodeExecutor.NodeExecutor()
+            self.assertAlmostEqual(Hal9000.burn_time_at_max_thrust, self.burn_time1, 1)
+
+    def test_maximum_throttle_and_burn_time(self, mock_conn):
+        """Check that maximum_throttle & burn_time are set from minimum_burn_time."""
+        mock_conn().space_center.active_vessel = self.vessel0
+        with self.subTest('burn time greater than minimum'):
+            Hal9000 = NodeExecutor.NodeExecutor(minimum_burn_time=self.burn_time0/2)
+            self.assertEqual(Hal9000.maximum_throttle, 1)
+            self.assertEqual(Hal9000.burn_time, Hal9000.burn_time_at_max_thrust)
+
+        with self.subTest('no minimum'):
+            Hal9000 = NodeExecutor.NodeExecutor(minimum_burn_time=0)
+            self.assertEqual(Hal9000.maximum_throttle, 1)
+            self.assertAlmostEqual(Hal9000.burn_time, Hal9000.burn_time_at_max_thrust)
+
+        with self.subTest('burn time less than minimum'):
+            Hal9000 = NodeExecutor.NodeExecutor(minimum_burn_time=self.burn_time0*2)
+            self.assertAlmostEqual(Hal9000.maximum_throttle, 0.5, 3)
+            self.assertEqual(Hal9000.burn_time, Hal9000.minimum_burn_time)
+
+    def test_burn_ut(self, mock_conn):
+        """Check that burn_ut is set properly."""
+        mock_conn().space_center.active_vessel = self.vessel0
+        with self.subTest('burn time greater than minimum'):
+            Hal9000 = NodeExecutor.NodeExecutor()
+            self.assertAlmostEqual(Hal9000.burn_ut, self.node0.ut - Hal9000.burn_time/2)
 
 
 if __name__ == '__main__':
