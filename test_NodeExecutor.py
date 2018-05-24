@@ -197,14 +197,14 @@ class Test_NodeExecutor_methods(unittest.TestCase):
 
     def setUp(self):
         """Set up the mock vessel."""
-        node = namedtuple('node', 'delta_v ut')
-        NODE0 = node(delta_v=10, ut=2000)
+        node = namedtuple('node', 'delta_v ut reference_frame')
+        NODE0 = node(delta_v=10, ut=2000, reference_frame='RF')
 
         control = namedtuple('control', 'nodes')
-        CONTROL0 = control(nodes=(NODE0,))
+        self.CONTROL0 = control(nodes=(NODE0,))
 
         vessel = namedtuple('vessel', 'control available_thrust specific_impulse mass')
-        self.VESSEL0 = vessel(control=CONTROL0,
+        self.VESSEL0 = vessel(control=self.CONTROL0,
                               available_thrust=100,
                               specific_impulse=200,
                               mass=300,)
@@ -237,6 +237,17 @@ class Test_NodeExecutor_methods(unittest.TestCase):
                 mock_conn().space_center.warp_to.assert_called_with(BURN_UT - MARGIN)
 
         calls = [call(f'Warping to {MARGIN:3.0f} seconds before burn.')]
+        with self.subTest('writes message to stdout'):
+            mock_stdout.write.assert_has_calls(calls)
+
+    def test_align_to_burn(self, mock_conn):
+        """Check that align_to_burn sets up and engages the autopilot."""
+        mock_conn().space_center.active_vessel.control = self.CONTROL0
+        Hal9000 = NodeExecutor.NodeExecutor()
+
+        with patch('sys.stdout') as mock_stdout:
+            Hal9000.align_to_burn()
+        calls = [call('Aligning to burn')]
         with self.subTest('writes message to stdout'):
             mock_stdout.write.assert_has_calls(calls)
 
