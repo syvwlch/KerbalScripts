@@ -13,6 +13,7 @@ class NodeExecutor:
         self.conn = krpc.connect(name='NodeExecutor')
         self.vessel = self.conn.space_center.active_vessel
         self.minimum_burn_time = minimum_burn_time
+        self.thrust = self.vessel.available_thrust
         assert(minimum_burn_time >= 0)
         return
 
@@ -90,12 +91,36 @@ class NodeExecutor:
         """Wait until ut is greater than or equal to ut_threshold."""
         while self.conn.space_center.ut < ut_threshold:
             time.sleep(0.01)
+        return
+
+    def throttle_manager(self, dV_left):
+        """Return the throttle value based on the dV left in the burn."""
+        # calculate the ratio of remaining dV to starting dV
+        dV_ratio = dV_left / self.delta_v
+        # decrease linearly to 5% of throttle_max for last 10% of dV
+        throttle = self.clamp(dV_ratio/0.10, floor=0.05, ceiling=1)
+        # obey maximum_throttle to keep burn time above minimum_burn_time
+        self.vessel.control.throttle = self.maximum_throttle * throttle
+        return
+
+    def auto_stage(self):
+        """Stage automatically if the thrust drops by more than 10%."""
+        thrust_ratio = self.vessel.available_thrust / self.thrust
+        if thrust_ratio < 0.9:
+            self.vessel.control.throttle = 0.0
+            self.time.sleep(0.1)
+            self.vessel.control.activate_next_stage()
+            print('Staged')
+            self.time.sleep(0.1)
+            self.maximum_throttle = self.clamp(self.maximum_throttle/thrust_ratio,
+                                               floor=0,
+                                               ceiling=1,)
+            self.thrust = self.vessel.available_thrust
+        return
 
     def burn_baby_burn(self):
         """Burn until dV_left is nearly zero, or autopilot.error is too great."""
-        # TODO: Consider making a non-blocking version of this, or at least
-        # bringing in logic to stage as necessary.
-
+        # wait until burn_ut
         self.wait_until_ut(self.burn_ut)
         print(f'Burn starting at T0 - {(self.node.ut-self.conn.space_center.ut):.0f} seconds')
         print(f'    {self.delta_v:3.1f} m/s to go')
@@ -105,47 +130,18 @@ class NodeExecutor:
                                        self.node.reference_frame,)
 
         # burn loop
-        thrust = self.vessel.available_thrust
-        while True:
-            # calculate the ratio of remaining dV to starting dV
-            dV_ratio = dV_left()[1] / self.delta_v
-
-            # decrease linearly to 5% of throttle_max for last 10% of dV
-            throttle = self.clamp(dV_ratio/0.10, floor=0.05, ceiling=1)
-            # obey maximum_throttle to keep burn time above minimum_burn_time
-            self.vessel.control.throttle = self.maximum_throttle * throttle
-
+        while self.ap.error < 20:
+            # set throttle based on remaining deltaV
+            self.throttle_manager(dV_left()[1])
             # stage if needed
-            thrust_ratio = self.vessel.available_thrust / thrust
-            if thrust_ratio < 0.9:
-                self.vessel.control.throttle = 0.0
-                self.time.sleep(0.1)
-                self.vessel.control.activate_next_stage()
-                print('Staged')
-                self.time.sleep(0.1)
-                self.maximum_throttle = self.clamp(self.maximum_throttle/thrust_ratio,
-                                                   floor=0,
-                                                   ceiling=1,)
-                self.vessel.control.throttle = self.maximum_throttle * throttle
-                thrust = self.vessel.available_thrust
-
-            # break out if autopilot steering error exceeds 20 degrees
-            if self.ap.error > 20:
-                print('Overshot')
-                break
-
-            # break out if dV_left rounds down to 0.0
-            if dV_left()[1] < 0.04:
-                print('Undershot')
-                break
-
+            self.auto_stage()
             # wait 10ms before looping around
             time.sleep(0.01)
 
         # kill throttle & stream
         self.vessel.control.throttle = 0.0
         print(f'Burn complete at T0 + {(self.conn.space_center.ut-self.node.ut):.0f} seconds')
-        print(f'    {dV_left()[1]:3.1f} m/s over/under')
+        print(f'    {dV_left()[1]:3.1f} m/s error')
         dV_left.remove()
         return
 
@@ -169,6 +165,19 @@ class NodeExecutor:
 
         self.cleanup()
         return
+
+    def __str__(self):
+        """Create the informal string representation of the class."""
+        line = f'Will burn for '
+        line += f'{self.delta_v:5.0f} m/s starting in '
+        line += f'{(self.burn_ut-self.conn.space_center.ut):5.0f} seconds.\n'
+        return line
+
+    def __repr__(self):
+        """Create the formal string representation of the class."""
+        line = f'NodeExecutor(minimum_burn_time='
+        line += f'{self.minimum_burn_time})'
+        return line
 
 
 # main loop

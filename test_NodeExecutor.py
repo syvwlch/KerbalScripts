@@ -285,5 +285,49 @@ class Test_NodeExecutor_methods(unittest.TestCase):
             self.assertTrue(called)
 
 
+@patch('krpc.connect', spec=True)
+class Test_NodeExecutor_private_methods(unittest.TestCase):
+    """
+    Test the NodeExecutor class representations methods.
+
+    Requires a patch on the KRPC server connection for:
+        - active vessel
+    """
+
+    def setUp(self):
+        """Set up the mock objects."""
+        node = namedtuple('node', 'delta_v ut reference_frame')
+        self.NODE0 = node(delta_v=10, ut=2000, reference_frame='RF')
+
+        control = namedtuple('control', 'nodes')
+        self.CONTROL0 = control(nodes=(self.NODE0,))
+
+        vessel = namedtuple('vessel', 'control available_thrust specific_impulse mass')
+        self.VESSEL0 = vessel(control=self.CONTROL0,
+                              available_thrust=100,
+                              specific_impulse=200,
+                              mass=300,)
+
+    def tearDown(self):
+        """Delete the mock objects."""
+        del(self.NODE0)
+        del(self.CONTROL0)
+        del(self.VESSEL0)
+
+    def test_str(self, mock_conn):
+        """Check that the __str__() method works."""
+        mock_conn().space_center.active_vessel = self.VESSEL0
+        mock_conn().space_center.ut = 100
+        actual_str = str(NodeExecutor.NodeExecutor(minimum_burn_time=10))
+        expect_str = 'Will burn for    10 m/s starting in  1885 seconds.\n'
+        self.assertEqual(actual_str, expect_str)
+
+    def test_repr(self, mock_conn):
+        """Check that the __repr__() method works."""
+        actual_str = repr(NodeExecutor.NodeExecutor(minimum_burn_time=10))
+        expect_str = 'NodeExecutor(minimum_burn_time=10)'
+        self.assertEqual(actual_str, expect_str)
+
+
 if __name__ == '__main__':
     unittest.main()
