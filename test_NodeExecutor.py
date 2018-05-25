@@ -215,7 +215,7 @@ class Test_NodeExecutor_methods(unittest.TestCase):
         del(self.CONTROL0)
         del(self.VESSEL0)
 
-    @patch('sys.stdout')
+    @patch('sys.stdout', spec=True)
     def test_align_to_burn(self, mock_stdout, mock_conn):
         """Check that align_to_burn sets up and engages the autopilot."""
         mock_conn().space_center.active_vessel.control = self.CONTROL0
@@ -242,7 +242,7 @@ class Test_NodeExecutor_methods(unittest.TestCase):
             STDOUT_CALLS = [call(f'Aligning at T0-{self.NODE0.ut-UT:.0f} seconds')]
             mock_stdout.write.assert_has_calls(STDOUT_CALLS)
 
-    @patch('sys.stdout')
+    @patch('sys.stdout', spec=True)
     def test_warp_safely_to_burn(self, mock_stdout, mock_conn):
         """Check that warp_safely_to_burn calls warp_to() only if necessary."""
         mock_conn().space_center.active_vessel = self.VESSEL0
@@ -274,12 +274,12 @@ class Test_NodeExecutor_methods(unittest.TestCase):
         """Check that wait_until_ut doesn't call time.sleep if ut is now or already past."""
         Hal9000 = NodeExecutor.NodeExecutor()
 
-        with patch('time.sleep') as mock_sleep:
+        with patch('time.sleep', spec=True) as mock_sleep:
             mock_conn().space_center.ut = 100
             Hal9000.wait_until_ut(ut_threshold=10)
             mock_sleep().assert_not_called()
 
-        with patch('time.sleep', side_effect=StopIteration):
+        with patch('time.sleep', spec=True, side_effect=StopIteration):
             mock_conn().space_center.ut = 10
             called = False
             try:
@@ -374,7 +374,7 @@ class Test_NodeExecutor_private_methods(unittest.TestCase):
     def test__wait_to_go_around_again(self, mock_conn):
         """Check it calls time.sleep() for 10 ms."""
         Hal9000 = NodeExecutor.NodeExecutor()
-        with patch('time.sleep', side_effect=StopIteration) as mock_sleep:
+        with patch('time.sleep', spec=True, side_effect=StopIteration):
             sleep_called = False
             try:
                 Hal9000._wait_to_go_around_again()
