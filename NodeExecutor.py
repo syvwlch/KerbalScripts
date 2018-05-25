@@ -129,14 +129,13 @@ class NodeExecutor:
     def _cleanup(self):
         """Remove the node & disengage autopilot."""
         # TODO: engage SAS stability control if it exists
-        self.ap = self.vessel.auto_pilot
-        self.ap.disengage()
+        self.vessel.auto_pilot.disengage()
         self.node.remove()
         return
 
     def _is_burn_complete(self):
         """Return True when it's time to shut down the engines."""
-        return self.ap.error > 20
+        return self.vessel.auto_pilot.error > 20
 
     def _wait_to_go_around_again(self):
         """Block until it's time to go thru the burn loop again."""
