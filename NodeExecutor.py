@@ -119,7 +119,7 @@ class NodeExecutor:
         return
 
     def burn_baby_burn(self):
-        """Burn until dV_left is nearly zero, or autopilot.error is too great."""
+        """Burn until autopilot.error is too great."""
         # wait until burn_ut
         self.wait_until_ut(self.burn_ut)
         print(f'Burn starting at T0 - {(self.node.ut-self.conn.space_center.ut):.0f} seconds')
