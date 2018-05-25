@@ -97,7 +97,7 @@ class NodeExecutor:
         """Return the throttle value based on the dV left in the burn."""
         dV_ratio = dV_left / self.delta_v
         # decrease linearly to 5% of throttle_max for last 10% of dV
-        throttle = self._clamp(dV_ratio/0.10, floor=0.05, ceiling=1)
+        throttle = self._clamp(dV_ratio*10, floor=0.05, ceiling=1)
         # obey maximum_throttle to keep burn time above minimum_burn_time
         self.vessel.control.throttle = self.maximum_throttle * throttle
         return

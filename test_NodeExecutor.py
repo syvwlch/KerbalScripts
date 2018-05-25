@@ -292,7 +292,7 @@ class Test_NodeExecutor_methods(unittest.TestCase):
 @patch('krpc.connect', spec=True)
 class Test_NodeExecutor_private_methods(unittest.TestCase):
     """
-    Test the NodeExecutor class representations methods.
+    Test the NodeExecutor class private methods.
 
     Requires a patch on the KRPC server connection for:
         - active vessel
@@ -317,6 +317,26 @@ class Test_NodeExecutor_private_methods(unittest.TestCase):
         del(self.NODE0)
         del(self.CONTROL0)
         del(self.VESSEL0)
+
+    def test_clamp(self, mock_conn):
+        """Check that the _clamp() method clamps the value between ceiling and floor."""
+        Hal9000 = NodeExecutor.NodeExecutor()
+        values = [[-1, 0, 2, 0], [1, 2, 0, 1], [0, -1, 1, 0], [-1, -3, -2, -2]]
+        for value, floor, ceiling, result in values:
+            self.assertEqual(Hal9000._clamp(value, floor, ceiling), result)
+
+    def test_throttle_manager(self, mock_conn):
+        """Check that throttle decreases linearly to 5% of throttle_max for last 10% of dV."""
+        mock_conn().space_center.active_vessel.control.nodes = (self.NODE0,)
+        mock_conn().space_center.active_vessel.available_thrust = 100
+        mock_conn().space_center.active_vessel.specific_impulse = 200
+        mock_conn().space_center.active_vessel.mass = 300
+        Hal9000 = NodeExecutor.NodeExecutor()
+        values = [[1, 1], [0.1, 1], [0.05, 0.5], [0.005, 0.05], [0.001, 0.05]]
+        for value, result in values:
+            Hal9000._throttle_manager(self.NODE0.delta_v * value)
+            self.assertAlmostEqual(mock_conn().space_center.active_vessel.control.throttle,
+                                   result * Hal9000.maximum_throttle)
 
     def test_str(self, mock_conn):
         """Check that the __str__() method works."""
