@@ -20,9 +20,10 @@ class NodeExecutor:
     @property
     def node(self):
         """Retrieve the first node in nodes[]."""
-        if len(self.vessel.control.nodes) > 0:
+        try:
             return self.vessel.control.nodes[0]
-        return None
+        except IndexError:
+            return None
 
     @property
     def has_node(self):
@@ -102,9 +103,11 @@ class NodeExecutor:
         self.vessel.control.throttle = self.maximum_throttle * throttle
         return
 
-    def _auto_stage(self):
-        """Stage automatically if the thrust drops by more than 10%."""
-        thrust_ratio = self.vessel.available_thrust / self.thrust
+    def _auto_stage(self, old_thrust):
+        """Return available_thrust, with side effect of staging if it drops more than 10%."""
+        if old_thrust == 0:
+            old_thrust = 1
+        thrust_ratio = self.vessel.available_thrust / old_thrust
         if thrust_ratio < 0.9:
             self.vessel.control.throttle = 0.0
             self.time.sleep(0.1)
@@ -121,8 +124,7 @@ class NodeExecutor:
             #                                     ceiling=1,)
             print(f'New burn time:    {self.burn_time_at_max_thrust:3.1f} seconds')
             print(f'New max throttle: {self.maximum_throttle*100:3.1f}%')
-            self.thrust = self.vessel.available_thrust
-        return
+        return self.vessel.available_thrust
 
     def _cleanup(self):
         """Remove the node & disengage autopilot."""
@@ -152,9 +154,10 @@ class NodeExecutor:
             print(f'Ignition at T0-{(self.node.ut-self.conn.space_center.ut):.0f} seconds')
             print(f'    {dV_left()[1]:.1f} m/s to go')
 
+            available_thrust = self.vessel.available_thrust
             while not self._is_burn_complete():
                 self._throttle_manager(dV_left()[1])
-                self._auto_stage()
+                available_thrust = self._auto_stage(available_thrust)
                 self._wait_to_go_around_again()
             self.vessel.control.throttle = 0.0
 

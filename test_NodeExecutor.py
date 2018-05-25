@@ -338,6 +338,21 @@ class Test_NodeExecutor_private_methods(unittest.TestCase):
             self.assertAlmostEqual(mock_conn().space_center.active_vessel.control.throttle,
                                    result * Hal9000.maximum_throttle)
 
+    @unittest.expectedFailure
+    def test_auto_stage(self, mock_conn):
+        """Check returns available_thrust, w/ side effect of staging if drops 10%+."""
+        self.fail('Make sure it works in game first')
+
+    def test_cleanup(self, mock_conn):
+        """Check that _cleanup() calls disengage() on autopilot and remove() on node."""
+        Hal9000 = NodeExecutor.NodeExecutor()
+        mock_conn().space_center.active_vessel.auto_pilot.disengage.assert_not_called()
+        mock_conn().space_center.active_vessel.control.nodes[0].remove.assert_not_called()
+        Hal9000._cleanup()
+        mock_conn().space_center.active_vessel.auto_pilot.disengage.assert_called_once_with()
+        mock_conn().space_center.active_vessel.control.nodes[0].remove.assert_called_once()
+        mock_conn().space_center.active_vessel.control.nodes[0].remove.assert_called_with()
+
     def test_str(self, mock_conn):
         """Check that the __str__() method works."""
         mock_conn().space_center.active_vessel = self.VESSEL0
