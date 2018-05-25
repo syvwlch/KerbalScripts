@@ -44,12 +44,6 @@ class NodeExecutor:
         flow_rate = F / Isp
         return (m0 - m1) / flow_rate
 
-    def clamp(self, value, floor, ceiling):
-        """Clamps the value between the ceiling and the floor."""
-        top = max(ceiling, floor)
-        bottom = min(ceiling, floor)
-        return max(bottom, min(top, value))
-
     @property
     def maximum_throttle(self):
         """Set the maximum throttle to keep burn time above minimum."""
@@ -69,7 +63,7 @@ class NodeExecutor:
 
     def align_to_burn(self):
         """Set the autopilot to align with the burn vector."""
-        print('Aligning to burn')
+        print(f'Aligning at T0-{(self.node.ut-self.conn.space_center.ut):.0f} seconds')
         self.ap = self.vessel.auto_pilot
         self.ap.reference_frame = self.node.reference_frame
         self.ap.target_direction = (0, 1, 0)
@@ -83,7 +77,7 @@ class NodeExecutor:
         """Warp to margin seconds before burn_time."""
         warp_time = self.burn_ut - margin
         if self.conn.space_center.ut < warp_time:
-            print(f'Warping to {margin:3.0f} seconds before burn.')
+            print(f'Warping to  T0-{(self.node.ut-warp_time):.0f} seconds')
             self.conn.space_center.warp_to(warp_time)
         return
 
@@ -93,59 +87,44 @@ class NodeExecutor:
             time.sleep(0.01)
         return
 
-    def throttle_manager(self, dV_left):
+    def _clamp(self, value, floor, ceiling):
+        """Clamps the value between the ceiling and the floor."""
+        top = max(ceiling, floor)
+        bottom = min(ceiling, floor)
+        return max(bottom, min(top, value))
+
+    def _throttle_manager(self, dV_left):
         """Return the throttle value based on the dV left in the burn."""
-        # calculate the ratio of remaining dV to starting dV
         dV_ratio = dV_left / self.delta_v
         # decrease linearly to 5% of throttle_max for last 10% of dV
-        throttle = self.clamp(dV_ratio/0.10, floor=0.05, ceiling=1)
+        throttle = self._clamp(dV_ratio/0.10, floor=0.05, ceiling=1)
         # obey maximum_throttle to keep burn time above minimum_burn_time
         self.vessel.control.throttle = self.maximum_throttle * throttle
         return
 
-    def auto_stage(self):
+    def _auto_stage(self):
         """Stage automatically if the thrust drops by more than 10%."""
         thrust_ratio = self.vessel.available_thrust / self.thrust
         if thrust_ratio < 0.9:
             self.vessel.control.throttle = 0.0
             self.time.sleep(0.1)
             self.vessel.control.activate_next_stage()
-            print('Staged')
+            T0 = self.node.ut-self.conn.space_center.ut
+            if T0 > 0:
+                print(f'Staged at T0-{(self.node.ut-self.conn.space_center.ut):.0f} seconds')
+            else:
+                print(f'Staged at T0+{(self.conn.space_center.ut-self.node.ut):.0f} seconds')
             self.time.sleep(0.1)
-            self.maximum_throttle = self.clamp(self.maximum_throttle/thrust_ratio,
-                                               floor=0,
-                                               ceiling=1,)
+            # Need to check, but I think this will automatically update next time it's called?
+            # self.maximum_throttle = self._clamp(self.maximum_throttle/thrust_ratio,
+            #                                     floor=0,
+            #                                     ceiling=1,)
+            print(f'New burn time:    {self.burn_time_at_max_thrust:3.1f} seconds')
+            print(f'New max throttle: {self.maximum_throttle*100:3.1f}%')
             self.thrust = self.vessel.available_thrust
         return
 
-    def burn_baby_burn(self):
-        """Burn until autopilot.error is too great."""
-        # wait until burn_ut
-        self.wait_until_ut(self.burn_ut)
-        print(f'Burn starting at T0 - {(self.node.ut-self.conn.space_center.ut):.0f} seconds')
-        print(f'    {self.delta_v:3.1f} m/s to go')
-
-        # set up stream for remaining_burn_vector
-        dV_left = self.conn.add_stream(self.node.remaining_burn_vector,
-                                       self.node.reference_frame,)
-
-        # burn loop
-        while self.ap.error < 20:
-            # set throttle based on remaining deltaV
-            self.throttle_manager(dV_left()[1])
-            # stage if needed
-            self.auto_stage()
-            # wait 10ms before looping around
-            time.sleep(0.01)
-
-        # kill throttle & stream
-        self.vessel.control.throttle = 0.0
-        print(f'Burn complete at T0 + {(self.conn.space_center.ut-self.node.ut):.0f} seconds')
-        print(f'    {dV_left()[1]:3.1f} m/s error')
-        dV_left.remove()
-        return
-
-    def cleanup(self):
+    def _cleanup(self):
         """Remove the node & disengage autopilot."""
         # TODO: engage SAS stability control if it exists
         self.ap = self.vessel.auto_pilot
@@ -153,17 +132,44 @@ class NodeExecutor:
         self.node.remove()
         return
 
+    def _is_burn_complete(self):
+        """Return True when it's time to shut down the engines."""
+        return self.ap.error > 20
+
+    def _wait_to_go_around_again(self):
+        """Block until it's time to go thru the burn loop again."""
+        time.sleep(0.01)
+        return
+
+    def burn_baby_burn(self):
+        """Set, execute, and clean up after the burn."""
+        # wait until burn_ut
+        self.wait_until_ut(self.burn_ut)
+
+        # set up stream for remaining_burn_vector
+        with self.conn.stream(self.node.remaining_burn_vector,
+                              self.node.reference_frame,) as dV_left:
+            print(f'Ignition at T0-{(self.node.ut-self.conn.space_center.ut):.0f} seconds')
+            print(f'    {dV_left()[1]:.1f} m/s to go')
+
+            while not self._is_burn_complete():
+                self._throttle_manager(dV_left()[1])
+                self._auto_stage()
+                self._wait_to_go_around_again()
+            self.vessel.control.throttle = 0.0
+
+            print(f'MECO at T0+{(self.conn.space_center.ut-self.node.ut):.0f} seconds')
+            print(f'    {dV_left()[1]:.1f} m/s to go')
+
+        self._cleanup()
+        return
+
     def execute_node(self):
         """Define the node execution logic."""
-        self.align_to_burn()
-        self.warp_safely_to_burn(margin=180)
-
-        self.align_to_burn()
-        self.warp_safely_to_burn(margin=5)
-
+        for margin in [180, 5]:
+            self.align_to_burn()
+            self.warp_safely_to_burn(margin=margin)
         self.burn_baby_burn()
-
-        self.cleanup()
         return
 
     def __str__(self):

@@ -219,6 +219,9 @@ class Test_NodeExecutor_methods(unittest.TestCase):
     def test_align_to_burn(self, mock_stdout, mock_conn):
         """Check that align_to_burn sets up and engages the autopilot."""
         mock_conn().space_center.active_vessel.control = self.CONTROL0
+        UT = 100
+        mock_conn().space_center.ut = UT
+
         Hal9000 = NodeExecutor.NodeExecutor()
 
         Hal9000.align_to_burn()
@@ -236,8 +239,8 @@ class Test_NodeExecutor_methods(unittest.TestCase):
             mock_conn().space_center.active_vessel.assert_has_calls(CONN_CALLS)
 
         with self.subTest('writes message to stdout'):
-            STDOUT_CALLS = [call.write('Aligning to burn')]
-            mock_stdout.assert_has_calls(STDOUT_CALLS)
+            STDOUT_CALLS = [call(f'Aligning at T0-{self.NODE0.ut-UT:.0f} seconds')]
+            mock_stdout.write.assert_has_calls(STDOUT_CALLS)
 
     @patch('sys.stdout')
     def test_warp_safely_to_burn(self, mock_stdout, mock_conn):
@@ -263,8 +266,9 @@ class Test_NodeExecutor_methods(unittest.TestCase):
             mock_conn().space_center.ut = BURN_UT - MARGIN - 1
             Hal9000.warp_safely_to_burn(margin=MARGIN)
             mock_conn().space_center.warp_to.assert_called_with(BURN_UT - MARGIN)
-            calls = [call(f'Warping to {MARGIN:3.0f} seconds before burn.')]
-            mock_stdout.write.assert_has_calls(calls)
+            T0 = self.NODE0.ut - BURN_UT + MARGIN
+            STDOUT_CALLS = [call(f'Warping to  T0-{T0:.0f} seconds')]
+            mock_stdout.write.assert_has_calls(STDOUT_CALLS)
 
     def test_wait_until_ut(self, mock_conn):
         """Check that wait_until_ut doesn't call time.sleep if ut is now or already past."""
