@@ -375,7 +375,8 @@ class Test_HohmannTransfer_use_cases(unittest.TestCase):
         expect_calls = [call(prograde=transfer.initial_dV, ut=0),
                         call(prograde=transfer.final_dV, ut=transfer.transfer_time)]
 
-        mock_conn().space_center.active_vessel.control.add_node.assert_has_calls(expect_calls)
+        control = mock_conn().space_center.active_vessel.control
+        control.add_node.assert_has_calls(expect_calls)
 
 
 if __name__ == '__main__':
