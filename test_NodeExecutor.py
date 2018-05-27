@@ -78,20 +78,20 @@ class Test_NodeExecutor_ro_attributes(unittest.TestCase):
         self.NODE0 = node(delta_v=10, ut=20)
         self.NODE1 = node(delta_v=30, ut=40)
 
-        control = namedtuple('control', 'nodes')
-        self.CONTROL0 = control(nodes=(self.NODE0, self.NODE1))
-        self.CONTROL1 = control(nodes=(self.NODE1,))
+        self.CONN_ATTR0 = {'space_center.active_vessel.control.nodes': (self.NODE0,
+                                                                        self.NODE1),
+                           'space_center.active_vessel.available_thrust': 100,
+                           'space_center.active_vessel.specific_impulse': 200,
+                           'space_center.active_vessel.mass': 300,
+                           'space_center.ut': 1980}
 
-        vessel = namedtuple('vessel', 'control available_thrust specific_impulse mass')
-        self.VESSEL0 = vessel(control=self.CONTROL0,
-                              available_thrust=100,
-                              specific_impulse=200,
-                              mass=300,)
+        self.CONN_ATTR1 = {'space_center.active_vessel.control.nodes': (self.NODE1,),
+                           'space_center.active_vessel.available_thrust': 200000,
+                           'space_center.active_vessel.specific_impulse': 800,
+                           'space_center.active_vessel.mass': 40000000,
+                           'space_center.ut': 1980}
+
         self.BURN_TIME0 = 29.9
-        self.VESSEL1 = vessel(control=self.CONTROL1,
-                              available_thrust=200000,
-                              specific_impulse=800,
-                              mass=40000000,)
         self.BURN_TIME1 = 5988.6
 
     def tearDown(self):
@@ -99,70 +99,71 @@ class Test_NodeExecutor_ro_attributes(unittest.TestCase):
         del(self.NODE0)
         del(self.NODE1)
 
-        del(self.CONTROL0)
-        del(self.CONTROL1)
-
-        del(self.VESSEL0)
-        del(self.VESSEL1)
+        del(self.CONN_ATTR0)
+        del(self.CONN_ATTR1)
 
         del(self.BURN_TIME0)
         del(self.BURN_TIME1)
 
     def test_node(self, mock_conn):
         """Check that node is the first node from active vessel."""
+        control = mock_conn().space_center.active_vessel.control
+
         with self.subTest('zero nodes'):
-            mock_conn().space_center.active_vessel.control.nodes = ()
+            control.nodes = ()
             Hal9000 = NodeExecutor.NodeExecutor()
             self.assertEqual(Hal9000.node, None)
 
         with self.subTest('one node'):
-            mock_conn().space_center.active_vessel.control.nodes = (self.NODE0,)
+            control.nodes = (self.NODE0,)
             Hal9000 = NodeExecutor.NodeExecutor()
             self.assertEqual(Hal9000.node, self.NODE0)
 
         with self.subTest('two nodes'):
-            mock_conn().space_center.active_vessel.control.nodes = (self.NODE0, self.NODE1)
+            control.nodes = (self.NODE0, self.NODE1)
             Hal9000 = NodeExecutor.NodeExecutor()
             self.assertEqual(Hal9000.node, self.NODE0)
 
     def test_has_node(self, mock_conn):
         """Check that has_node is True only when the active vessel has at least one node."""
-        with self.subTest('No nodes'):
-            mock_conn().space_center.active_vessel.control.nodes = ()
+        control = mock_conn().space_center.active_vessel.control
+
+        with self.subTest('zero nodes'):
+            control.nodes = ()
             Hal9000 = NodeExecutor.NodeExecutor()
             self.assertEqual(Hal9000.has_node, False)
 
-        with self.subTest('One node'):
-            mock_conn().space_center.active_vessel.control.nodes = (self.NODE0,)
+        with self.subTest('one node'):
+            control.nodes = (self.NODE0,)
             Hal9000 = NodeExecutor.NodeExecutor()
             self.assertEqual(Hal9000.has_node, True)
 
-        with self.subTest('Two nodes'):
-            mock_conn().space_center.active_vessel.control.nodes = (self.NODE0, self.NODE1)
+        with self.subTest('two nodes'):
+            control.nodes = (self.NODE0, self.NODE1)
             Hal9000 = NodeExecutor.NodeExecutor()
             self.assertEqual(Hal9000.has_node, True)
 
     def test_delta_v(self, mock_conn):
         """Check that delta_v is set from the node."""
-        mock_conn().space_center.active_vessel = self.VESSEL0
+        mock_conn().configure_mock(**self.CONN_ATTR0)
         Hal9000 = NodeExecutor.NodeExecutor()
         self.assertEqual(Hal9000.delta_v, self.NODE0.delta_v)
 
     def test_burn_time_at_max_thrust(self, mock_conn):
         """Check that burn_time_at_max_thrust is set from the node and active vessel."""
         with self.subTest('first set of values'):
-            mock_conn().space_center.active_vessel = self.VESSEL0
+            mock_conn().configure_mock(**self.CONN_ATTR0)
             Hal9000 = NodeExecutor.NodeExecutor()
             self.assertAlmostEqual(Hal9000.burn_time_at_max_thrust, self.BURN_TIME0, 1)
 
         with self.subTest('second set of values'):
-            mock_conn().space_center.active_vessel = self.VESSEL1
+            mock_conn().configure_mock(**self.CONN_ATTR1)
             Hal9000 = NodeExecutor.NodeExecutor()
             self.assertAlmostEqual(Hal9000.burn_time_at_max_thrust, self.BURN_TIME1, 1)
 
     def test_maximum_throttle_and_burn_time(self, mock_conn):
         """Check that maximum_throttle & burn_time are set from minimum_burn_time."""
-        mock_conn().space_center.active_vessel = self.VESSEL0
+        mock_conn().configure_mock(**self.CONN_ATTR0)
 
         with self.subTest('burn time greater than minimum'):
             Hal9000 = NodeExecutor.NodeExecutor(minimum_burn_time=self.BURN_TIME0/2)
@@ -181,7 +182,7 @@ class Test_NodeExecutor_ro_attributes(unittest.TestCase):
 
     def test_burn_ut(self, mock_conn):
         """Check that burn_ut is set properly."""
-        mock_conn().space_center.active_vessel = self.VESSEL0
+        mock_conn().configure_mock(**self.CONN_ATTR0)
         Hal9000 = NodeExecutor.NodeExecutor()
         self.assertAlmostEqual(Hal9000.burn_ut, self.NODE0.ut - Hal9000.burn_time/2)
 
@@ -199,53 +200,50 @@ class Test_NodeExecutor_methods(unittest.TestCase):
         """Set up the mock objects."""
         node = namedtuple('node', 'delta_v ut reference_frame')
         self.NODE0 = node(delta_v=10, ut=2000, reference_frame='RF')
-
-        control = namedtuple('control', 'nodes')
-        self.CONTROL0 = control(nodes=(self.NODE0,))
-
-        vessel = namedtuple('vessel', 'control available_thrust specific_impulse mass')
-        self.VESSEL0 = vessel(control=self.CONTROL0,
-                              available_thrust=100,
-                              specific_impulse=200,
-                              mass=300,)
+        self.CONN_ATTRS = {'space_center.active_vessel.control.nodes': (self.NODE0,),
+                           'space_center.active_vessel.available_thrust': 100,
+                           'space_center.active_vessel.specific_impulse': 200,
+                           'space_center.active_vessel.mass': 30,
+                           'space_center.ut': 1980}
 
     def tearDown(self):
         """Delete the mock objects."""
         del(self.NODE0)
-        del(self.CONTROL0)
-        del(self.VESSEL0)
+        del(self.CONN_ATTRS)
 
     @patch('sys.stdout', spec=True)
     def test_align_to_burn(self, mock_stdout, mock_conn):
         """Check that align_to_burn sets up and engages the autopilot."""
-        mock_conn().space_center.active_vessel.control = self.CONTROL0
-        UT = 100
-        mock_conn().space_center.ut = UT
+        mock_conn().configure_mock(**self.CONN_ATTRS)
+        # UT = 100
+        # mock_conn().space_center.ut = UT
 
         Hal9000 = NodeExecutor.NodeExecutor()
+        auto_pilot = mock_conn().space_center.active_vessel.auto_pilot
 
         Hal9000.align_to_burn()
 
         with self.subTest('sets the auto_pilot attributes'):
-            actual_ref = mock_conn().space_center.active_vessel.auto_pilot.reference_frame
+            actual_ref = auto_pilot.reference_frame
             self.assertEqual(actual_ref, self.NODE0.reference_frame)
-            actual_dir = mock_conn().space_center.active_vessel.auto_pilot.target_direction
+            actual_dir = auto_pilot.target_direction
             self.assertEqual(actual_dir, (0, 1, 0))
-            actual_rol = mock_conn().space_center.active_vessel.auto_pilot.target_roll
-            self.assertNotEqual(actual_rol, actual_rol)
+            actual_rol = auto_pilot.target_roll
+            self.assertNotEqual(actual_rol, actual_rol, 'Expected NaN')
 
         with self.subTest('engages auto_pilot & waits for alignment'):
-            CONN_CALLS = [call.auto_pilot.engage(), call.auto_pilot.wait()]
-            mock_conn().space_center.active_vessel.assert_has_calls(CONN_CALLS)
+            CONN_CALLS = [call.engage(), call.wait()]
+            auto_pilot.assert_has_calls(CONN_CALLS)
 
         with self.subTest('writes message to stdout'):
-            STDOUT_CALLS = [call(f'Aligning at T0-{self.NODE0.ut-UT:.0f} seconds')]
+            T0 = self.NODE0.ut - self.CONN_ATTRS['space_center.ut']
+            STDOUT_CALLS = [call(f'Aligning at T0-{T0:.0f} seconds')]
             mock_stdout.write.assert_has_calls(STDOUT_CALLS)
 
     @patch('sys.stdout', spec=True)
     def test_warp_safely_to_burn(self, mock_stdout, mock_conn):
         """Check that warp_safely_to_burn calls warp_to() only if necessary."""
-        mock_conn().space_center.active_vessel = self.VESSEL0
+        mock_conn().configure_mock(**self.CONN_ATTRS)
         MARGIN = 10
         Hal9000 = NodeExecutor.NodeExecutor()
         BURN_UT = Hal9000.burn_ut
