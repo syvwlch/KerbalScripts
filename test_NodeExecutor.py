@@ -312,68 +312,87 @@ class Test_NodeExecutor_private_methods(unittest.TestCase):
         """Set up the mock objects."""
         node = namedtuple('node', 'delta_v ut reference_frame')
         self.NODE0 = node(delta_v=10, ut=2000, reference_frame='RF')
-
-        control = namedtuple('control', 'nodes')
-        self.CONTROL0 = control(nodes=(self.NODE0,))
-
-        vessel = namedtuple('vessel', 'control available_thrust specific_impulse mass')
-        self.VESSEL0 = vessel(control=self.CONTROL0,
-                              available_thrust=100,
-                              specific_impulse=200,
-                              mass=300,)
+        self.CONN_ATTRS = {'space_center.active_vessel.control.nodes': (self.NODE0,),
+                           'space_center.active_vessel.available_thrust': 100,
+                           'space_center.active_vessel.specific_impulse': 200,
+                           'space_center.active_vessel.mass': 30,
+                           'space_center.ut': 1980}
 
     def tearDown(self):
         """Delete the mock objects."""
         del(self.NODE0)
-        del(self.CONTROL0)
-        del(self.VESSEL0)
+        del(self.CONN_ATTRS)
 
     def test__clamp(self, mock_conn):
         """Check that the _clamp() method clamps the value between ceiling and floor."""
         Hal9000 = NodeExecutor.NodeExecutor()
-        values = [[-1, 0, 2, 0], [1, 2, 0, 1], [0, -1, 1, 0], [-1, -3, -2, -2]]
+
+        values = [[-1, 0, 2, 0], [1, 2, 0, 1], [0, -1, 1, 0], [-1, -3, -2, -2], ]
+
         for value, floor, ceiling, result in values:
             self.assertEqual(Hal9000._clamp(value, floor, ceiling), result)
 
     def test__throttle_manager(self, mock_conn):
         """Check that throttle decreases linearly to 5% of throttle_max for last 10% of dV."""
-        mock_conn().space_center.active_vessel.control.nodes = (self.NODE0,)
-        mock_conn().space_center.active_vessel.available_thrust = 100
-        mock_conn().space_center.active_vessel.specific_impulse = 200
-        mock_conn().space_center.active_vessel.mass = 300
+        mock_conn().configure_mock(**self.CONN_ATTRS)
         Hal9000 = NodeExecutor.NodeExecutor()
-        values = [[1, 1], [0.1, 1], [0.05, 0.5], [0.005, 0.05], [0.001, 0.05]]
+        control = mock_conn().space_center.active_vessel.control
+
+        values = [[1, 1], [0.1, 1], [0.05, 0.5], [0.005, 0.05], [0.001, 0.05], ]
+
         for value, result in values:
             Hal9000._throttle_manager(self.NODE0.delta_v * value)
-            self.assertAlmostEqual(mock_conn().space_center.active_vessel.control.throttle,
-                                   result * Hal9000.maximum_throttle)
+            self.assertAlmostEqual(control.throttle, result * Hal9000.maximum_throttle)
 
-    @unittest.expectedFailure
-    def test__auto_stage(self, mock_conn):
+    @patch('sys.stdout', spec=True)
+    def test__auto_stage(self, mock_stdout, mock_conn):
         """Check returns available_thrust, w/ side effect of staging if drops 10%+."""
-        self.fail('Make sure it works in game first')
+        mock_conn().configure_mock(**self.CONN_ATTRS)
+        Hal9000 = NodeExecutor.NodeExecutor()
+        vessel = mock_conn().space_center.active_vessel
+        control = vessel.control
+
+        VALUES = [[95, 0.79, 3.1, [], []],
+                  [89, 0.84, 3.4, [call()], [call(f'Staged at T0-20 seconds')]],
+                  [50, 1.00, 6.0, [call()], [call(f'Staged at T0-20 seconds')]],
+                  [25, 1.00, 12.0, [call()], [call(f'Staged at T0-20 seconds')]], ]
+
+        for available_thrust, new_thrust, burn_time, conn_calls, stdout_calls in VALUES:
+            with self.subTest(f'thrust_ratio: {available_thrust}%'):
+                mock_conn().reset_mock()
+                mock_stdout.reset_mock()
+                vessel.available_thrust = available_thrust
+                self.assertEqual(Hal9000._auto_stage(100), available_thrust)
+                self.assertAlmostEqual(Hal9000.maximum_throttle, new_thrust, 2)
+                self.assertAlmostEqual(Hal9000.burn_time_at_max_thrust, burn_time, 1)
+                self.assertEqual(control.activate_next_stage.call_args_list, conn_calls)
+                mock_stdout.write.assert_has_calls(stdout_calls)
 
     def test__cleanup(self, mock_conn):
         """Check that _cleanup() calls disengage() on autopilot and remove() on node."""
         Hal9000 = NodeExecutor.NodeExecutor()
-        mock_conn().space_center.active_vessel.auto_pilot.disengage.assert_not_called()
-        mock_conn().space_center.active_vessel.control.nodes[0].remove.assert_not_called()
+        vessel = mock_conn().space_center.active_vessel
+
+        vessel.auto_pilot.disengage.assert_not_called()
+        vessel.control.nodes[0].remove.assert_not_called()
         Hal9000._cleanup()
-        mock_conn().space_center.active_vessel.auto_pilot.disengage.assert_called_once_with()
-        mock_conn().space_center.active_vessel.control.nodes[0].remove.assert_called_once()
-        mock_conn().space_center.active_vessel.control.nodes[0].remove.assert_called_with()
+        vessel.auto_pilot.disengage.assert_called_once_with()
+        vessel.control.nodes[0].remove.assert_called_once_with()
 
     def test__is_burn_complete(self, mock_conn):
         """Check returns True when it's time to shut down the engines."""
         Hal9000 = NodeExecutor.NodeExecutor()
-        mock_conn().space_center.active_vessel.auto_pilot.error = 10
+        auto_pilot = mock_conn().space_center.active_vessel.auto_pilot
+
+        auto_pilot.error = 10
         self.assertFalse(Hal9000._is_burn_complete())
-        mock_conn().space_center.active_vessel.auto_pilot.error = 30
+        auto_pilot.error = 30
         self.assertTrue(Hal9000._is_burn_complete())
 
     def test__wait_to_go_around_again(self, mock_conn):
         """Check it calls time.sleep() for 10 ms."""
         Hal9000 = NodeExecutor.NodeExecutor()
+
         with patch('time.sleep', spec=True, side_effect=StopIteration):
             sleep_called = False
             try:
@@ -384,10 +403,9 @@ class Test_NodeExecutor_private_methods(unittest.TestCase):
 
     def test___str__(self, mock_conn):
         """Check that the __str__() method works."""
-        mock_conn().space_center.active_vessel = self.VESSEL0
-        mock_conn().space_center.ut = 100
+        mock_conn().configure_mock(**self.CONN_ATTRS)
         actual_str = str(NodeExecutor.NodeExecutor(minimum_burn_time=10))
-        expect_str = 'Will burn for    10 m/s starting in  1885 seconds.\n'
+        expect_str = 'Will burn for 10.0 m/s starting in 15.0 seconds.\n'
         self.assertEqual(actual_str, expect_str)
 
     def test___repr__(self, mock_conn):

@@ -110,20 +110,14 @@ class NodeExecutor:
         thrust_ratio = self.vessel.available_thrust / old_thrust
         if thrust_ratio < 0.9:
             self.vessel.control.throttle = 0.0
-            self.time.sleep(0.1)
+            time.sleep(0.1)
             self.vessel.control.activate_next_stage()
-            T0 = self.node.ut-self.conn.space_center.ut
+            T0 = self.node.ut - self.conn.space_center.ut
             if T0 > 0:
                 print(f'Staged at T0-{(self.node.ut-self.conn.space_center.ut):.0f} seconds')
             else:
                 print(f'Staged at T0+{(self.conn.space_center.ut-self.node.ut):.0f} seconds')
-            self.time.sleep(0.1)
-            # Need to check, but I think this will automatically update next time it's called?
-            # self.maximum_throttle = self._clamp(self.maximum_throttle/thrust_ratio,
-            #                                     floor=0,
-            #                                     ceiling=1,)
-            print(f'New burn time:    {self.burn_time_at_max_thrust:3.1f} seconds')
-            print(f'New max throttle: {self.maximum_throttle*100:3.1f}%')
+            time.sleep(0.1)
         return self.vessel.available_thrust
 
     def _cleanup(self):
@@ -177,8 +171,8 @@ class NodeExecutor:
     def __str__(self):
         """Create the informal string representation of the class."""
         line = f'Will burn for '
-        line += f'{self.delta_v:5.0f} m/s starting in '
-        line += f'{(self.burn_ut-self.conn.space_center.ut):5.0f} seconds.\n'
+        line += f'{self.delta_v:0.1f} m/s starting in '
+        line += f'{(self.burn_ut-self.conn.space_center.ut):0.1f} seconds.\n'
         return line
 
     def __repr__(self):
