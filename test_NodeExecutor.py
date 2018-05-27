@@ -296,7 +296,6 @@ class Test_NodeExecutor_methods(unittest.TestCase):
     @patch.object(NodeExecutor.NodeExecutor, 'align_to_burn')
     def test_execute_node(self, mock_a2b, mock_ws2b, mock_bbb, mock_conn):
         """Check it progressively approaches the node, and then call burn_baby_burn()."""
-        mock_conn().configure_mock(**self.CONN_ATTRS)
         Hal9000 = NodeExecutor.NodeExecutor()
         Hal9000.execute_node()
         Hal9000.align_to_burn.assert_has_calls([call(), call()])
