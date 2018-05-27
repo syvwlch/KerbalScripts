@@ -225,10 +225,10 @@ class Test_NodeExecutor_methods(unittest.TestCase):
 
         with self.subTest('sets the auto_pilot attributes'):
             actual_ref = auto_pilot.reference_frame
-            self.assertEqual(actual_ref, self.NODE0.reference_frame)
             actual_dir = auto_pilot.target_direction
-            self.assertEqual(actual_dir, (0, 1, 0))
             actual_rol = auto_pilot.target_roll
+            self.assertEqual(actual_ref, self.NODE0.reference_frame)
+            self.assertEqual(actual_dir, (0, 1, 0))
             self.assertNotEqual(actual_rol, actual_rol, 'Expected NaN')
 
         with self.subTest('engages auto_pilot & waits for alignment'):
