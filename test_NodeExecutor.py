@@ -291,16 +291,19 @@ class Test_NodeExecutor_methods(unittest.TestCase):
         """Check it sets up, executes, and cleans up the burn loop."""
         self.fail('TODO')
 
-    @patch.object(NodeExecutor, 'burn_baby_burn')
-    @patch.object(NodeExecutor, 'warp_safely_to_burn')
-    @patch.object(NodeExecutor, 'align_to_burn')
-    def test_execute_node(self, mock_a2b, mock_ws2b, mock_bbb, mock_conn):
+    def test_execute_node(self, mock_conn):
         """Check it progressively approaches the node, and then call burn_baby_burn()."""
         Hal9000 = NodeExecutor()
-        Hal9000.execute_node()
-        Hal9000.align_to_burn.assert_has_calls([call(), call()])
-        Hal9000.warp_safely_to_burn.assert_has_calls([call(margin=180), call(margin=5)])
-        Hal9000.burn_baby_burn.assert_has_calls([call()])
+        with patch.object(NodeExecutor, 'burn_baby_burn'):
+            with patch.object(NodeExecutor, 'warp_safely_to_burn'):
+                with patch.object(NodeExecutor, 'align_to_burn'):
+                    Hal9000.execute_node()
+                    calls = [call(), call()]
+                    Hal9000.align_to_burn.assert_has_calls(calls)
+                calls = [call(margin=180), call(margin=5)]
+                Hal9000.warp_safely_to_burn.assert_has_calls(calls)
+            calls = [call()]
+            Hal9000.burn_baby_burn.assert_has_calls(calls)
 
 
 @patch('krpc.connect', spec=True)
