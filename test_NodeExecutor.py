@@ -286,10 +286,26 @@ class Test_NodeExecutor_methods(unittest.TestCase):
                 called = True
             self.assertTrue(called)
 
-    @unittest.expectedFailure
+    # @unittest.expectedFailure
     def test_burn_baby_burn(self, mock_conn):
         """Check it sets up, executes, and cleans up the burn loop."""
-        self.fail('TODO')
+        # self.fail('TODO')
+        Hal9000 = NodeExecutor()
+        vessel = mock_conn().space_center.active_vessel
+        vessel.control.throttle = 1.0
+        dV_left = 100
+        mock_conn().stream().__enter__().return_value = (0, dV_left, 0)
+        with patch.object(NodeExecutor, '_print_burn_event'):
+            with patch.object(NodeExecutor, '_burn_loop'):
+                with patch.object(NodeExecutor, '_print_burn_error'):
+                    with patch.object(NodeExecutor, '_cleanup'):
+                        Hal9000.burn_baby_burn()
+                        Hal9000._cleanup.assert_called_once_with()
+                    Hal9000._print_burn_error.assert_called_once_with(dV_left)
+                Hal9000._burn_loop.assert_called_once_with(dV_left)
+            calls = [call('Ignition'), call('MECO')]
+            Hal9000._print_burn_event.assert_has_calls(calls)
+        self.assertAlmostEqual(vessel.control.throttle, 0.0)
 
     def test_execute_node(self, mock_conn):
         """Check it progressively approaches the node, and then calls burn_baby_burn()."""
