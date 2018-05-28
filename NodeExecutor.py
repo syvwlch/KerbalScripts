@@ -137,6 +137,15 @@ class NodeExecutor:
         time.sleep(0.01)
         return
 
+    def _burn_loop(self, dV_left):
+        """Run thru the burn loop."""
+        available_thrust = self.vessel.available_thrust
+        while not self._is_burn_complete():
+            self._throttle_manager(dV_left()[1])
+            available_thrust = self._auto_stage(available_thrust)
+            self._wait_to_go_around_again()
+        return
+
     def burn_baby_burn(self):
         """Execute the burn."""
         with self.conn.stream(self.node.remaining_burn_vector,
@@ -144,11 +153,7 @@ class NodeExecutor:
             print(f'Ignition at T0-{(self.node.ut-self.conn.space_center.ut):.0f} seconds')
             print(f'    {dV_left()[1]:.1f} m/s to go')
 
-            available_thrust = self.vessel.available_thrust
-            while not self._is_burn_complete():
-                self._throttle_manager(dV_left()[1])
-                available_thrust = self._auto_stage(available_thrust)
-                self._wait_to_go_around_again()
+            self._burn_loop(dV_left)
 
             self.vessel.control.throttle = 0.0
 
