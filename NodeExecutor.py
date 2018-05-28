@@ -115,9 +115,10 @@ class NodeExecutor:
 
     def _auto_stage(self, old_thrust):
         """Return available_thrust, with side effect of staging if it drops more than 10%."""
-        if old_thrust == 0:
-            old_thrust = 1
-        thrust_ratio = self.vessel.available_thrust / old_thrust
+        try:
+            thrust_ratio = self.vessel.available_thrust / old_thrust
+        except ZeroDivisionError:
+            thrust_ratio = 1
         if thrust_ratio < 0.9:
             self.vessel.control.throttle = 0.0
             time.sleep(0.1)
