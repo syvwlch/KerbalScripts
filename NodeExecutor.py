@@ -15,6 +15,7 @@ class NodeExecutor:
         self.minimum_burn_time = minimum_burn_time
         self.thrust = self.vessel.available_thrust
         assert(minimum_burn_time >= 0)
+        self.approach_margins = [180, 5]
         return
 
     @property
@@ -137,11 +138,7 @@ class NodeExecutor:
         return
 
     def burn_baby_burn(self):
-        """Set, execute, and clean up after the burn."""
-        # wait until burn_ut
-        self.wait_until_ut(self.burn_ut)
-
-        # set up stream for remaining_burn_vector
+        """Execute the burn."""
         with self.conn.stream(self.node.remaining_burn_vector,
                               self.node.reference_frame,) as dV_left:
             print(f'Ignition at T0-{(self.node.ut-self.conn.space_center.ut):.0f} seconds')
@@ -152,19 +149,21 @@ class NodeExecutor:
                 self._throttle_manager(dV_left()[1])
                 available_thrust = self._auto_stage(available_thrust)
                 self._wait_to_go_around_again()
+
             self.vessel.control.throttle = 0.0
 
             print(f'MECO at T0+{(self.conn.space_center.ut-self.node.ut):.0f} seconds')
             print(f'    {dV_left()[1]:.1f} m/s to go')
 
-        self._cleanup()
+            self._cleanup()
         return
 
     def execute_node(self):
         """Define the node execution logic."""
-        for margin in [180, 5]:
+        for approach_margin in self.approach_margins:
             self.align_to_burn()
-            self.warp_safely_to_burn(margin=margin)
+            self.warp_safely_to_burn(margin=approach_margin)
+        self.wait_until_ut(self.burn_ut)
         self.burn_baby_burn()
         return
 

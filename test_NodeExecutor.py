@@ -292,18 +292,20 @@ class Test_NodeExecutor_methods(unittest.TestCase):
         self.fail('TODO')
 
     def test_execute_node(self, mock_conn):
-        """Check it progressively approaches the node, and then call burn_baby_burn()."""
+        """Check it progressively approaches the node, and then calls burn_baby_burn()."""
+        mock_conn().configure_mock(**self.CONN_ATTRS)
         Hal9000 = NodeExecutor()
         with patch.object(NodeExecutor, 'burn_baby_burn'):
-            with patch.object(NodeExecutor, 'warp_safely_to_burn'):
-                with patch.object(NodeExecutor, 'align_to_burn'):
-                    Hal9000.execute_node()
-                    calls = [call(), call()]
-                    Hal9000.align_to_burn.assert_has_calls(calls)
-                calls = [call(margin=180), call(margin=5)]
-                Hal9000.warp_safely_to_burn.assert_has_calls(calls)
-            calls = [call()]
-            Hal9000.burn_baby_burn.assert_has_calls(calls)
+            with patch.object(NodeExecutor, 'wait_until_ut'):
+                with patch.object(NodeExecutor, 'warp_safely_to_burn'):
+                    with patch.object(NodeExecutor, 'align_to_burn'):
+                        Hal9000.execute_node()
+                        calls = [call(), call()]
+                        Hal9000.align_to_burn.assert_has_calls(calls)
+                    calls = [call(margin=180), call(margin=5)]
+                    Hal9000.warp_safely_to_burn.assert_has_calls(calls)
+                Hal9000.wait_until_ut.assert_called_once_with(Hal9000.burn_ut)
+            Hal9000.burn_baby_burn.assert_called_once_with()
 
 
 @patch('krpc.connect', spec=True)
