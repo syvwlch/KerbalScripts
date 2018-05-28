@@ -319,7 +319,26 @@ class Test_NodeExecutor_methods(unittest.TestCase):
 
     def test__burn_loop(self, mock_conn):
         """Manage the throttle until the burn is complete, and stage as necessary."""
-        self.fail('finish the test!')
+        def _false_once_then_true():
+            yield False
+            while True:
+                yield True
+
+        mock_conn().configure_mock(**self.CONN_ATTRS)
+        Hal9000 = NodeExecutor()
+        dV_left = 100
+        mock_conn().space_center.active_vessel.auto_pilot.error = 0
+
+        with patch.object(NodeExecutor, '_is_burn_complete',
+                                        side_effect=_false_once_then_true(),):
+            with patch.object(NodeExecutor, '_throttle_manager'):
+                with patch.object(NodeExecutor, '_auto_stage'):
+                    with patch.object(NodeExecutor, '_wait_to_go_around_again'):
+                        Hal9000._burn_loop(dV_left)
+                        Hal9000._wait_to_go_around_again.assert_called_once_with()
+                    Hal9000._auto_stage.assert_called_once_with(Hal9000.thrust)
+                Hal9000._throttle_manager.assert_called_once_with(dV_left)
+            Hal9000._is_burn_complete.assert_has_calls([call(), call()])
 
     def test__print_burn_error(self, mock_conn):
         """Print the remaining deltaV to stdout."""
