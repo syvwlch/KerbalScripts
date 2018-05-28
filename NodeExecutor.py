@@ -151,20 +151,23 @@ class NodeExecutor:
             self._wait_to_go_around_again()
         return
 
+    def _print_burn_error(self, dV_left):
+        """Print out error on remaining_burn_vector to stdout."""
+        print(f'{dV_left/self.delta_v:2.2f}% of original dV left.')
+
     def burn_baby_burn(self):
         """Execute the burn."""
         with self.conn.stream(self.node.remaining_burn_vector,
                               self.node.reference_frame,) as remaining_burn_vector:
             dV_left = remaining_burn_vector()[1]
             self._print_burn_event('Ignition')
-            print(f'    {dV_left:.1f} m/s to go')
 
             self._burn_loop(dV_left)
 
             self.vessel.control.throttle = 0.0
 
             self._print_burn_event('MECO')
-            print(f'    {dV_left:.1f} m/s to go')
+            self._print_burn_error(dV_left)
 
             self._cleanup()
         return
