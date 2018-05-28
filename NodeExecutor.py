@@ -104,6 +104,15 @@ class NodeExecutor:
         self.vessel.control.throttle = self.maximum_throttle * throttle
         return
 
+    def _print_burn_event(self, event_msg='Event happened'):
+        """Print a burn event to stdout with time to T0 & remaining dV."""
+        T0 = self.node.ut - self.conn.space_center.ut
+        if T0 > 0:
+            print(f'{event_msg} at T0-{abs(T0):.0f} seconds')
+        else:
+            print(f'{event_msg} at T0+{abs(T0):.0f} seconds')
+        return
+
     def _auto_stage(self, old_thrust):
         """Return available_thrust, with side effect of staging if it drops more than 10%."""
         if old_thrust == 0:
@@ -113,11 +122,7 @@ class NodeExecutor:
             self.vessel.control.throttle = 0.0
             time.sleep(0.1)
             self.vessel.control.activate_next_stage()
-            T0 = self.node.ut - self.conn.space_center.ut
-            if T0 > 0:
-                print(f'Staged at T0-{(self.node.ut-self.conn.space_center.ut):.0f} seconds')
-            else:
-                print(f'Staged at T0+{(self.conn.space_center.ut-self.node.ut):.0f} seconds')
+            self._print_burn_event('Staged')
             time.sleep(0.1)
         return self.vessel.available_thrust
 
@@ -141,7 +146,7 @@ class NodeExecutor:
         """Run thru the burn loop."""
         available_thrust = self.vessel.available_thrust
         while not self._is_burn_complete():
-            self._throttle_manager(dV_left()[1])
+            self._throttle_manager(dV_left)
             available_thrust = self._auto_stage(available_thrust)
             self._wait_to_go_around_again()
         return
@@ -149,16 +154,17 @@ class NodeExecutor:
     def burn_baby_burn(self):
         """Execute the burn."""
         with self.conn.stream(self.node.remaining_burn_vector,
-                              self.node.reference_frame,) as dV_left:
-            print(f'Ignition at T0-{(self.node.ut-self.conn.space_center.ut):.0f} seconds')
-            print(f'    {dV_left()[1]:.1f} m/s to go')
+                              self.node.reference_frame,) as remaining_burn_vector:
+            dV_left = remaining_burn_vector()[1]
+            self._print_burn_event('Ignition')
+            print(f'    {dV_left:.1f} m/s to go')
 
             self._burn_loop(dV_left)
 
             self.vessel.control.throttle = 0.0
 
-            print(f'MECO at T0+{(self.conn.space_center.ut-self.node.ut):.0f} seconds')
-            print(f'    {dV_left()[1]:.1f} m/s to go')
+            self._print_burn_event('MECO')
+            print(f'    {dV_left:.1f} m/s to go')
 
             self._cleanup()
         return
