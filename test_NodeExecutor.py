@@ -306,7 +306,7 @@ class Test_NodeExecutor_methods(unittest.TestCase):
         self.assertAlmostEqual(vessel.control.throttle, 0.0)
 
     def test__print_burn_event(self, mock_conn):
-        """Print a message to stdout with the time to T0 appended."""
+        """Check that a message is printed to stdout with the time to T0 appended."""
         mock_conn().configure_mock(**self.CONN_ATTRS)
         TEST_MSG = 'Test event happened'
         STDOUT_CALLS = [call(f'Test event happened at T0-20 seconds')]
@@ -316,7 +316,7 @@ class Test_NodeExecutor_methods(unittest.TestCase):
             mock_stdout.write.assert_has_calls(STDOUT_CALLS)
 
     def test__burn_loop(self, mock_conn):
-        """Manage the throttle until the burn is complete, and stage as necessary."""
+        """Check that the throttle is managed until the burn is complete, with staging."""
         def _false_once_then_true():
             yield False
             while True:
@@ -339,7 +339,7 @@ class Test_NodeExecutor_methods(unittest.TestCase):
             Hal9000._is_burn_complete.assert_has_calls([call(), call()])
 
     def test__print_burn_error(self, mock_conn):
-        """Print the remaining deltaV to stdout."""
+        """Check that the remaining deltaV is printed to stdout."""
         mock_conn().configure_mock(**self.CONN_ATTRS)
         Hal9000 = NodeExecutor()
         dV_left = 0.1
