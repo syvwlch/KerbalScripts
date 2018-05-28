@@ -211,12 +211,11 @@ class Test_NodeExecutor_methods(unittest.TestCase):
         del(self.NODE0)
         del(self.CONN_ATTRS)
 
+    @patch('NodeExecutor.time', spec=True)
     @patch('sys.stdout', spec=True)
-    def test_align_to_burn(self, mock_stdout, mock_conn):
+    def test_align_to_burn(self, mock_stdout, mock_time, mock_conn):
         """Check that align_to_burn sets up and engages the autopilot."""
         mock_conn().configure_mock(**self.CONN_ATTRS)
-        # UT = 100
-        # mock_conn().space_center.ut = UT
 
         Hal9000 = NodeExecutor()
         auto_pilot = mock_conn().space_center.active_vessel.auto_pilot
@@ -286,7 +285,6 @@ class Test_NodeExecutor_methods(unittest.TestCase):
                 called = True
             self.assertTrue(called)
 
-    # @unittest.expectedFailure
     def test_burn_baby_burn(self, mock_conn):
         """Check it sets up, executes, and cleans up the burn loop."""
         # self.fail('TODO')
