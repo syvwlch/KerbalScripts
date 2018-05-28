@@ -307,6 +307,30 @@ class Test_NodeExecutor_methods(unittest.TestCase):
             Hal9000._print_burn_event.assert_has_calls(calls)
         self.assertAlmostEqual(vessel.control.throttle, 0.0)
 
+    def test__print_burn_event(self, mock_conn):
+        """Print a message to stdout with the time to T0 appended."""
+        mock_conn().configure_mock(**self.CONN_ATTRS)
+        TEST_MSG = 'Test event happened'
+        STDOUT_CALLS = [call(f'Test event happened at T0-20 seconds')]
+        Hal9000 = NodeExecutor()
+        with patch('sys.stdout', spec=True) as mock_stdout:
+            Hal9000._print_burn_event(TEST_MSG)
+            mock_stdout.write.assert_has_calls(STDOUT_CALLS)
+
+    def test__burn_loop(self, mock_conn):
+        """Manage the throttle until the burn is complete, and stage as necessary."""
+        self.fail('finish the test!')
+
+    def test__print_burn_error(self, mock_conn):
+        """Print the remaining deltaV to stdout."""
+        mock_conn().configure_mock(**self.CONN_ATTRS)
+        Hal9000 = NodeExecutor()
+        dV_left = 0.1
+        STDOUT_CALLS = [call(f'{(dV_left/Hal9000.delta_v):2.2f}% of original dV left.')]
+        with patch('sys.stdout', spec=True) as mock_stdout:
+            Hal9000._print_burn_error(dV_left)
+            mock_stdout.write.assert_has_calls(STDOUT_CALLS)
+
     def test_execute_node(self, mock_conn):
         """Check it progressively approaches the node, and then calls burn_baby_burn()."""
         mock_conn().configure_mock(**self.CONN_ATTRS)
