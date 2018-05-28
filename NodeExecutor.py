@@ -157,7 +157,7 @@ class NodeExecutor:
         print(f'{dV_left/self.delta_v:2.2f}% of original dV left.')
 
     def burn_baby_burn(self):
-        """Execute the burn."""
+        """Set up the stream for dV_left, run the burn loop, and then clean up."""
         with self.conn.stream(self.node.remaining_burn_vector,
                               self.node.reference_frame,) as remaining_burn_vector:
             dV_left = remaining_burn_vector()[1]
