@@ -271,10 +271,10 @@ class Test_NodeExecutor_methods(unittest.TestCase):
         """Check that wait_until_ut doesn't call time.sleep if ut is now or already past."""
         Hal9000 = NodeExecutor()
 
-        with patch('time.sleep', spec=True) as mock_sleep:
+        with patch('NodeExecutor.time', spec=True) as mock_time:
             mock_conn().space_center.ut = 100
             Hal9000.wait_until_ut(ut_threshold=10)
-            mock_sleep().assert_not_called()
+            mock_time.sleep.assert_not_called()
 
         with patch('time.sleep', spec=True, side_effect=StopIteration):
             mock_conn().space_center.ut = 10
@@ -418,22 +418,27 @@ class Test_NodeExecutor_private_methods(unittest.TestCase):
         vessel = mock_conn().space_center.active_vessel
         control = vessel.control
 
-        VALUES = [[95, 0.79, 3.1, [], []],
-                  [89, 0.84, 3.4, [call()], [call(f'Staged at T0-20 seconds')]],
-                  [50, 1.00, 6.0, [call()], [call(f'Staged at T0-20 seconds')]],
-                  [25, 1.00, 12.0, [call()], [call(f'Staged at T0-20 seconds')]], ]
+        VALUES = [[95, 0.79, 3.1, False],
+                  [89, 0.84, 3.4, True],
+                  [50, 1.00, 6.0, True],
+                  [25, 1.00, 12.0, True], ]
 
-        for available_thrust, new_thrust, burn_time, conn_calls, stdout_calls in VALUES:
-            with self.subTest(f'thrust_ratio: {available_thrust}%'):
+        for old_thrust, new_thrust, burn_time, calls_made in VALUES:
+            with self.subTest(f'thrust_ratio: {old_thrust}%'):
                 mock_conn().reset_mock()
                 mock_stdout.reset_mock()
                 mock_time.reset_mock()
-                vessel.available_thrust = available_thrust
-                self.assertEqual(Hal9000._auto_stage(100), available_thrust)
+                vessel.available_thrust = old_thrust
+                self.assertEqual(Hal9000._auto_stage(100), old_thrust)
                 self.assertAlmostEqual(Hal9000.maximum_throttle, new_thrust, 2)
                 self.assertAlmostEqual(Hal9000.burn_time_at_max_thrust, burn_time, 1)
-                self.assertEqual(control.activate_next_stage.call_args_list, conn_calls)
-                mock_stdout.write.assert_has_calls(stdout_calls)
+                if calls_made:
+                    control.activate_next_stage.assert_called_once_with()
+                    mock_stdout.write.assert_has_calls([call(f'Staged at T0-20 seconds')])
+                    mock_time.sleep.assert_has_calls([call(0.1), call(0.1)])
+                else:
+                    mock_stdout.write.assert_not_called()
+                    mock_time.sleep.assert_not_called()
 
     def test__cleanup(self, mock_conn):
         """Check that _cleanup() calls disengage() on autopilot and remove() on node."""
@@ -460,13 +465,9 @@ class Test_NodeExecutor_private_methods(unittest.TestCase):
         """Check it calls time.sleep() for 10 ms."""
         Hal9000 = NodeExecutor()
 
-        with patch('time.sleep', spec=True, side_effect=StopIteration):
-            sleep_called = False
-            try:
-                Hal9000._wait_to_go_around_again()
-            except StopIteration:
-                sleep_called = True
-            self.assertTrue(sleep_called)
+        with patch('NodeExecutor.time', spec=True) as mock_time:
+            Hal9000._wait_to_go_around_again()
+            mock_time.sleep.assert_called_once_with(0.01)
 
     def test___str__(self, mock_conn):
         """Check that the __str__() method works."""
