@@ -1,7 +1,7 @@
 """
 Unit test the NodeExecutor class.
 
-Work in progress.
+Full coverage achieved, refactoring for readability & efficiency ongoing.
 """
 
 import unittest
@@ -287,7 +287,6 @@ class Test_NodeExecutor_methods(unittest.TestCase):
 
     def test_burn_baby_burn(self, mock_conn):
         """Check it sets up, executes, and cleans up the burn loop."""
-        # self.fail('TODO')
         Hal9000 = NodeExecutor()
         vessel = mock_conn().space_center.active_vessel
         vessel.control.throttle = 1.0
