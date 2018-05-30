@@ -141,12 +141,16 @@ class NodeExecutor(object):
         time.sleep(0.01)
         return
 
+    def _is_burn_complete(self, error):
+        """Return True when it's time to shut down the engines."""
+        return error > 20
+
     def _burn_loop(self):
         """Run thru the burn loop."""
         with self.conn.stream(getattr, self.vessel.auto_pilot, 'error') as error:
             with self.conn.stream(getattr, self.node, 'remaining_delta_v') as dV_left:
                 available_thrust = self.vessel.available_thrust
-                while not error() > 20:
+                while not self._is_burn_complete(error()):
                     self._throttle_manager(dV_left())
                     available_thrust = self._auto_stage(available_thrust)
                     self._wait_to_go_around_again()
