@@ -43,7 +43,7 @@ class Launcher(object):
         """Set the ascent angle for the current altitude."""
         TURN_START_ALTITUDE = 1000
         TURN_START_ANGLE = 80
-        TURN_END_ALTITUDE = 60*1000
+        TURN_END_ALTITUDE = 50*1000
 
         if altitude > TURN_START_ALTITUDE and altitude < TURN_END_ALTITUDE:
             frac = ((TURN_END_ALTITUDE - altitude) /
