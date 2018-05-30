@@ -143,16 +143,14 @@ class NodeExecutor(object):
 
     def _burn_loop(self):
         """Run thru the burn loop."""
-        available_thrust = self.vessel.available_thrust
-        with self.conn.stream(getattr,
-                              self.vessel.auto_pilot,
-                              'error') as error:
-            with self.conn.stream(self.node.remaining_burn_vector,
-                                  self.node.reference_frame,) as remaining_burn_vector:
+        with self.conn.stream(getattr, self.vessel.auto_pilot, 'error') as error:
+            with self.conn.stream(getattr, self.node, 'remaining_delta_v') as dV_left:
+                available_thrust = self.vessel.available_thrust
                 while not error() > 20:
-                    self._throttle_manager(remaining_burn_vector()[1])
+                    self._throttle_manager(dV_left())
                     available_thrust = self._auto_stage(available_thrust)
                     self._wait_to_go_around_again()
+        self.vessel.control.throttle = 0.0
         return
 
     def _print_burn_error(self, dV_left):
@@ -164,8 +162,6 @@ class NodeExecutor(object):
         self._print_burn_event('Ignition')
 
         self._burn_loop()
-
-        self.vessel.control.throttle = 0.0
 
         self._print_burn_event('MECO')
         self._print_burn_error(self.node.remaining_delta_v)
