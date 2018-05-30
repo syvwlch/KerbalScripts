@@ -15,9 +15,6 @@ class Launcher(object):
         self.vessel = self.conn.space_center.active_vessel
         self.target_altitude = target_altitude
         self.target_inclination = target_inclination
-        # setting up streams
-        self.altitude = self.conn.add_stream(getattr, self.vessel.flight(), 'mean_altitude')
-        self.apoapsis = self.conn.add_stream(getattr, self.vessel.orbit, 'apoapsis_altitude')
         return
 
     def ignition(self):
@@ -42,45 +39,60 @@ class Launcher(object):
         self.vessel.control.activate_next_stage()
         return
 
+    def _ascent_angle_manager(self, altitude):
+        """Set the ascent angle for the current altitude."""
+        TURN_START_ALTITUDE = 1000
+        TURN_START_ANGLE = 80
+        TURN_END_ALTITUDE = 60*1000
+
+        if altitude > TURN_START_ALTITUDE and altitude < TURN_END_ALTITUDE:
+            frac = ((TURN_END_ALTITUDE - altitude) /
+                    (TURN_END_ALTITUDE - TURN_START_ALTITUDE))
+            turn_angle = frac * TURN_START_ANGLE
+        elif altitude >= TURN_END_ALTITUDE:
+            turn_angle = 0
+        else:
+            turn_angle = 90
+        self.vessel.auto_pilot.target_pitch = turn_angle
+        return
+
+    def _auto_stage(self, old_thrust):
+        """Return available_thrust, with side effect of staging if it drops more than 10%."""
+        try:
+            thrust_ratio = self.vessel.available_thrust / old_thrust
+        except ZeroDivisionError:
+            thrust_ratio = 1
+        if thrust_ratio < 0.9:
+            old_throttle = self.vessel.control.throttle
+            self.vessel.control.throttle = 0.0
+            time.sleep(0.1)
+            self.vessel.control.activate_next_stage()
+            time.sleep(0.1)
+            self.vessel.control.throttle = old_throttle
+        return self.vessel.available_thrust
+
+    def _wait_to_go_around_again(self):
+        """Block until it's time to go thru the burn loop again."""
+        time.sleep(0.01)
+        return
+
     def ascent(self):
         """Perform the ascent until apoapsis reaches target_altitude."""
-        def _ascent_angle(altitude):
-            """Calculate the ascent angle at the current altitude."""
-            TURN_START_ALTITUDE = 1000
-            TURN_START_ANGLE = 80
-            TURN_END_ALTITUDE = 60*1000
+        with self.conn.stream(getattr,
+                              self.vessel.flight(),
+                              'mean_altitude') as altitude:
 
-            if altitude > TURN_START_ALTITUDE and altitude < TURN_END_ALTITUDE:
-                frac = ((TURN_END_ALTITUDE - altitude) /
-                        (TURN_END_ALTITUDE - TURN_START_ALTITUDE))
-                turn_angle = frac * TURN_START_ANGLE
-            elif altitude >= TURN_END_ALTITUDE:
-                turn_angle = 0
-            else:
-                turn_angle = 90
-            return turn_angle
+            with self.conn.stream(getattr,
+                                  self.vessel.orbit,
+                                  'apoapsis_altitude') as apoapsis:
 
-        turn_angle = 90
-        thrust = self.vessel.available_thrust
-        while True:
-            # ascent profile
-            new_turn_angle = _ascent_angle(self.altitude())
-            if abs(new_turn_angle - turn_angle) > 0.5:
-                turn_angle = new_turn_angle
-                self.vessel.auto_pilot.target_pitch = turn_angle
+                available_thrust = self.vessel.available_thrust
+                while not apoapsis() > self.target_altitude:
+                    self._ascent_angle_manager(altitude())
+                    available_thrust = self._auto_stage(available_thrust)
+                    self._wait_to_go_around_again()
 
-            if self.vessel.available_thrust < 0.9 * thrust:
-                self.vessel.control.throttle = 0.0
-                time.sleep(0.5)
-                self.vessel.control.activate_next_stage()
-                time.sleep(0.5)
-                self.vessel.control.throttle = 1.0
-                thrust = self.vessel.available_thrust
-
-            # break out when reaching target apoapsis
-            if self.apoapsis() > self.target_altitude:
-                self.vessel.control.throttle = 0.0
-                break
+        self.vessel.control.throttle = 0.0
         return
 
     def setup_circularization(self):
