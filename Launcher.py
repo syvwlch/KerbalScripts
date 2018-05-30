@@ -97,6 +97,18 @@ class Launcher(object):
             prograde=delta_v, )
         return
 
+    def __str__(self):
+        """Create the informal string representation of the class."""
+        line = f'Will launch to {(self.target_altitude/1000):.1f}km '
+        line += f' and set up the circularization maneuver node.\n'
+        return line
+
+    def __repr__(self):
+        """Create the formal string representation of the class."""
+        line = f'Launcher(target_altitude='
+        line += f'{self.target_altitude})'
+        return line
+
 
 # main loop
 if __name__ == "__main__":
