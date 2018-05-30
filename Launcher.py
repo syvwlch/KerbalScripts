@@ -97,6 +97,13 @@ class Launcher(object):
             prograde=delta_v, )
         return
 
+    def execute(self):
+        """Define the launch execution logic."""
+        self.ignition()
+        self.ascent()
+        self.circularization()
+        return
+
     def __str__(self):
         """Create the informal string representation of the class."""
         line = f'Will launch to {(self.target_altitude/1000):.1f}km '
@@ -113,9 +120,7 @@ class Launcher(object):
 # main loop
 if __name__ == "__main__":
     launcher = Launcher(target_altitude=80*1000)
-    launcher.ignition()
-    launcher.ascent()
-    launcher.circularization()
+    launcher.execute()
     del(launcher)
 
     node_doer = NodeExecutor(minimum_burn_time=4)
