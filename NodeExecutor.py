@@ -120,11 +120,13 @@ class NodeExecutor(object):
         except ZeroDivisionError:
             thrust_ratio = 1
         if thrust_ratio < 0.9:
+            old_throttle = self.vessel.control.throttle
             self.vessel.control.throttle = 0.0
             time.sleep(0.1)
             self.vessel.control.activate_next_stage()
             self._print_burn_event('Staged')
             time.sleep(0.1)
+            self.vessel.control.throttle = old_throttle
         return self.vessel.available_thrust
 
     def _cleanup(self):
