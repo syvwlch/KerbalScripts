@@ -7,7 +7,7 @@ from NodeExecutor import NodeExecutor
 
 
 class Launcher(object):
-    """Automatically launch the active vessel into orbit."""
+    """Automatically launch to target_altitude and set up the circulization node."""
 
     def __init__(self, target_altitude, target_inclination=0):
         """Create a connection to krpc and initialize from active vessel."""
@@ -120,7 +120,7 @@ class Launcher(object):
 
 # main loop
 if __name__ == "__main__":
-    launcher = Launcher(target_altitude=80*1000)
+    launcher = Launcher(target_altitude=80*1000, target_inclination=0)
     launcher.execute()
     del(launcher)
 
