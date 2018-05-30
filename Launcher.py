@@ -113,7 +113,8 @@ class Launcher(object):
     def __repr__(self):
         """Create the formal string representation of the class."""
         line = f'Launcher(target_altitude='
-        line += f'{self.target_altitude})'
+        line += f'{self.target_altitude}, target_inclination='
+        line += f'{self.target_inclination})'
         return line
 
 
