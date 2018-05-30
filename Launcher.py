@@ -83,7 +83,7 @@ class Launcher(object):
                 break
         return
 
-    def circularization(self):
+    def setup_circularization(self):
         """Set up circulization maneuver."""
         mu = self.vessel.orbit.body.gravitational_parameter
         r = self.vessel.orbit.apoapsis
@@ -101,7 +101,7 @@ class Launcher(object):
         """Define the launch execution logic."""
         self.ignition()
         self.ascent()
-        self.circularization()
+        self.setup_circularization()
         return
 
     def __str__(self):
