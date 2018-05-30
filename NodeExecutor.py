@@ -136,10 +136,6 @@ class NodeExecutor(object):
         self.node.remove()
         return
 
-    def _is_burn_complete(self):
-        """Return True when it's time to shut down the engines."""
-        return self.vessel.auto_pilot.error > 20
-
     def _wait_to_go_around_again(self):
         """Block until it's time to go thru the burn loop again."""
         time.sleep(0.01)
@@ -148,10 +144,13 @@ class NodeExecutor(object):
     def _burn_loop(self, dV_left):
         """Run thru the burn loop."""
         available_thrust = self.vessel.available_thrust
-        while not self._is_burn_complete():
-            self._throttle_manager(dV_left)
-            available_thrust = self._auto_stage(available_thrust)
-            self._wait_to_go_around_again()
+        with self.conn.stream(getattr,
+                              self.vessel.auto_pilot,
+                              'error') as error:
+            while not error() > 20:  # self._is_burn_complete():
+                self._throttle_manager(dV_left)
+                available_thrust = self._auto_stage(available_thrust)
+                self._wait_to_go_around_again()
         return
 
     def _print_burn_error(self, dV_left):
