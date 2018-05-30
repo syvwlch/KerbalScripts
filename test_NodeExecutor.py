@@ -289,7 +289,6 @@ class Test_NodeExecutor_methods(unittest.TestCase):
         """Check it sets up, executes, and cleans up the burn loop."""
         mock_conn().configure_mock(**self.CONN_ATTRS)
         Hal9000 = NodeExecutor()
-        vessel = mock_conn().space_center.active_vessel
         dV_left = self.NODE0.delta_v
         remaining_delta_v = self.NODE0.remaining_delta_v
         mock_conn().stream().__enter__().return_value = dV_left
