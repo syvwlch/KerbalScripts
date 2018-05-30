@@ -1,174 +1,109 @@
-# This a generic version of my launch script
-
-# initial release leaves staging to the pilot
+"""Simple launch class."""
 
 from math import sqrt
 import time
 import krpc
-from NodeExecutor import execute_node
-
-conn = krpc.connect(name='Launcher')
-
-# Set up the UI
-canvas = conn.ui.stock_canvas
-
-# Get the size of the game window in pixels
-screen_size = canvas.rect_transform.size
-
-# Add a panel to contain the UI elements
-panel = canvas.add_panel()
-
-# Position the panel relative to the center of the screen
-rect = panel.rect_transform
-width = 400
-height = 80
-padding_w = 0
-Padding_h = 65
-rect.size = (width, height)
-rect.position = (width/2+padding_w-screen_size[0]/2, screen_size[1]/2-(height/2+Padding_h))
-
-# Add some text displaying messages to user
-text = panel.add_text("...")
-text.rect_transform.size = (380, 30)
-text.rect_transform.position = (0, +20)
-text.color = (1, 1, 1)
-text.size = 18
-
-# defining a display function to update terminal & UI at the same time
+from NodeExecutor import NodeExecutor
 
 
-def update_UI(message='...'):
-    print(message)
-    text.content = message
-    return
+class Launcher(object):
+    """Automatically launch the active vessel into orbit."""
 
+    def __init__(self, target_altitude, target_inclination=0):
+        """Create a connection to krpc and initialize from active vessel."""
+        self.conn = krpc.connect(name='Launcher')
+        self.vessel = self.conn.space_center.active_vessel
+        self.target_altitude = target_altitude
+        self.target_inclination = target_inclination
+        # setting up streams
+        self.altitude = self.conn.add_stream(getattr, self.vessel.flight(), 'mean_altitude')
+        self.apoapsis = self.conn.add_stream(getattr, self.vessel.orbit, 'apoapsis_altitude')
+        return
 
-vessel = conn.space_center.active_vessel
-ap = vessel.auto_pilot
+    def ignition(self):
+        """Perform ignition."""
+        # Pre-ignition setup
+        self.vessel.control.sas = False
+        self.vessel.control.rcs = False
+        self.vessel.control.throttle = 1.0
+        time.sleep(1)
 
-# setting up variables
-turn_start_altitude = 1000
-turn_start_angle = 80
-turn_end_altitude = 60*1000
-target_inclination = 0
-target_altitude = 80*1000
+        # setting up autopilot
+        ap = self.vessel.auto_pilot
+        ap.time_to_peak = (5, 10, 5)
+        ap.overshoot = (0.005, 0.010, 0.005)
+        ap.reference_frame = self.vessel.surface_reference_frame
+        ap.target_pitch = 90
+        ap.target_heading = 90 - self.target_inclination
+        ap.target_roll = 180
+        ap.engage()
 
-# setting up streams
-ut = conn.add_stream(getattr, conn.space_center, 'ut')
-altitude = conn.add_stream(getattr, vessel.flight(), 'mean_altitude')
-apoapsis = conn.add_stream(getattr, vessel.orbit, 'apoapsis_altitude')
+        # releasing clamps & igniting first stage
+        self.vessel.control.activate_next_stage()
+        return
 
+    def ascent(self):
+        """Perform the ascent until apoapsis reaches target_altitude."""
+        def _ascent_angle(altitude):
+            """Calculate the ascent angle at the current altitude."""
+            TURN_START_ALTITUDE = 1000
+            TURN_START_ANGLE = 80
+            TURN_END_ALTITUDE = 60*1000
 
-def hold_for_click(require_click=True):
-    # wait button click to launch
-    if require_click:
-        update_UI('Click to launch')
-        button = panel.add_button("Launch")
-        button.rect_transform.size = (100, 30)
-        button.rect_transform.position = (135, -20)
-        button_clicked = conn.add_stream(getattr, button, 'clicked')
-        while True:
-            if button_clicked():
-                button.clicked = False
-                break
-            time.sleep(0.1)
-        button.remove()
-    return
+            if altitude > TURN_START_ALTITUDE and altitude < TURN_END_ALTITUDE:
+                frac = ((TURN_END_ALTITUDE - altitude) /
+                        (TURN_END_ALTITUDE - TURN_START_ALTITUDE))
+                turn_angle = frac * TURN_START_ANGLE
+            elif altitude >= TURN_END_ALTITUDE:
+                turn_angle = 0
+            else:
+                turn_angle = 90
+            return turn_angle
 
-
-def ignition():
-    # Pre-ignition setup
-    vessel.control.sas = False
-    vessel.control.rcs = False
-    vessel.control.throttle = 1.0
-    time.sleep(1)
-
-    # setting up autopilot
-    ap.time_to_peak = (5, 10, 5)
-    ap.overshoot = (0.005, 0.010, 0.005)
-    ap.reference_frame = vessel.surface_reference_frame
-    ap.target_pitch = 90
-    ap.target_heading = 90-target_inclination
-    ap.target_roll = 180
-    ap.engage()
-
-    # releasing clamps & igniting first stage
-    vessel.control.activate_next_stage()
-    update_UI('Ignition')
-    return
-
-
-def ascent_angle(altitude):
-    if altitude > turn_start_altitude and altitude < turn_end_altitude:
-        frac = ((turn_end_altitude - altitude) /
-                (turn_end_altitude - turn_start_altitude))
-        turn_angle = frac * turn_start_angle
-    elif altitude >= turn_end_altitude:
-        turn_angle = 0
-    else:
         turn_angle = 90
-    return turn_angle
+        thrust = self.vessel.available_thrust
+        while True:
+            # ascent profile
+            new_turn_angle = _ascent_angle(self.altitude())
+            if abs(new_turn_angle - turn_angle) > 0.5:
+                turn_angle = new_turn_angle
+                self.vessel.auto_pilot.target_pitch = turn_angle
 
+            if self.vessel.available_thrust < 0.9 * thrust:
+                self.vessel.control.throttle = 0.0
+                time.sleep(0.5)
+                self.vessel.control.activate_next_stage()
+                time.sleep(0.5)
+                self.vessel.control.throttle = 1.0
+                thrust = self.vessel.available_thrust
 
-def ascent():
-    update_UI('Gravity turn')
-    turn_angle = 90
-    thrust = vessel.available_thrust
-    while True:
-        # ascent profile
-        new_turn_angle = ascent_angle(altitude())
-        if abs(new_turn_angle - turn_angle) > 0.5:
-            turn_angle = new_turn_angle
-            ap.target_pitch = turn_angle
+            # break out when reaching target apoapsis
+            if self.apoapsis() > self.target_altitude:
+                self.vessel.control.throttle = 0.0
+                break
+        return
 
-        if vessel.available_thrust < 0.9 * thrust:
-            vessel.control.throttle = 0.0
-            time.sleep(0.5)
-            vessel.control.activate_next_stage()
-            time.sleep(0.5)
-            vessel.control.throttle = 1.0
-            thrust = vessel.available_thrust
-
-        # break out when reaching target apoapsis
-        if apoapsis() > target_altitude:
-            update_UI('Target apoapsis reached')
-            vessel.control.throttle = 0.0
-            break
-    return
-
-
-def circularization():
-    # setting up circulization maneuver
-    mu = vessel.orbit.body.gravitational_parameter
-    r = vessel.orbit.apoapsis
-    a1 = vessel.orbit.semi_major_axis
-    a2 = r
-    v1 = sqrt(mu*((2./r)-(1./a1)))
-    v2 = sqrt(mu*((2./r)-(1./a2)))
-    delta_v = v2 - v1
-    node = vessel.control.add_node(
-        ut() + vessel.orbit.time_to_apoapsis, prograde=delta_v)
-    return node
-
-
-def goodbye():
-    update_UI('Enjoy your orbit!')
-    time.sleep(3)
-    return
+    def circularization(self):
+        """Set up circulization maneuver."""
+        mu = self.vessel.orbit.body.gravitational_parameter
+        r = self.vessel.orbit.apoapsis
+        a1 = self.vessel.orbit.semi_major_axis
+        a2 = r
+        v1 = sqrt(mu*((2./r)-(1./a1)))
+        v2 = sqrt(mu*((2./r)-(1./a2)))
+        delta_v = v2 - v1
+        self.vessel.control.add_node(
+            self.conn.space_center.ut + self.vessel.orbit.time_to_apoapsis,
+            prograde=delta_v, )
+        return
 
 
 # main loop
 if __name__ == "__main__":
-    hold_for_click()
+    launcher = Launcher(target_altitude=80*1000)
+    launcher.ignition()
+    launcher.ascent()
+    launcher.circularization()
 
-    ignition()
-
-    conn.space_center.physics_war_factor = 2
-
-    ascent()
-
-    conn.space_center.physics_war_factor = 0
-
-    execute_node(circularization())
-
-    goodbye()
+    node_doer = NodeExecutor(minimum_burn_time=4)
+    node_doer.execute_node()
