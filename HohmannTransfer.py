@@ -9,7 +9,7 @@ from math import pi, sqrt, pow
 import krpc
 
 
-class HohmannTransfer:
+class HohmannTransfer(object):
     """
     Create Hohmann transfers which can be executed in KSP.
 

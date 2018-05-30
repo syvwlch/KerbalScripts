@@ -5,7 +5,7 @@ import time
 import krpc
 
 
-class NodeExecutor:
+class NodeExecutor(object):
     """Automatically execute the next maneuver node."""
 
     def __init__(self, minimum_burn_time=4):
