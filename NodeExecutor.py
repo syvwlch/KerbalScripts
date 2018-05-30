@@ -96,7 +96,7 @@ class NodeExecutor(object):
         return max(bottom, min(top, value))
 
     def _throttle_manager(self, dV_left):
-        """Return the throttle value based on the dV left in the burn."""
+        """Set throttle value based on the dV left in the burn."""
         dV_ratio = dV_left / self.delta_v
         # decrease linearly to 5% of throttle_max for last 10% of dV
         throttle = self._clamp(dV_ratio*10, floor=0.05, ceiling=1)
