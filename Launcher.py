@@ -97,7 +97,7 @@ class Launcher(object):
             prograde=delta_v, )
         return
 
-    def execute(self):
+    def execute_launch(self):
         """Define the launch execution logic."""
         self.ignition()
         self.ascent()
@@ -121,7 +121,7 @@ class Launcher(object):
 # main loop
 if __name__ == "__main__":
     launcher = Launcher(target_altitude=80*1000, target_inclination=0)
-    launcher.execute()
+    launcher.execute_launch()
     del(launcher)
 
     node_doer = NodeExecutor(minimum_burn_time=4)
