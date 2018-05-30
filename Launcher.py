@@ -104,6 +104,7 @@ if __name__ == "__main__":
     launcher.ignition()
     launcher.ascent()
     launcher.circularization()
+    del(launcher)
 
     node_doer = NodeExecutor(minimum_burn_time=4)
     node_doer.execute_node()
