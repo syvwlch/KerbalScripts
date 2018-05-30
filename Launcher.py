@@ -78,20 +78,15 @@ class Launcher(object):
 
     def ascent(self):
         """Perform the ascent until apoapsis reaches target_altitude."""
-        with self.conn.stream(getattr,
-                              self.vessel.flight(),
+        with self.conn.stream(getattr, self.vessel.flight(),
                               'mean_altitude') as altitude:
-
-            with self.conn.stream(getattr,
-                                  self.vessel.orbit,
+            with self.conn.stream(getattr, self.vessel.orbit,
                                   'apoapsis_altitude') as apoapsis:
-
                 available_thrust = self.vessel.available_thrust
                 while not apoapsis() > self.target_altitude:
                     self._ascent_angle_manager(altitude())
                     available_thrust = self._auto_stage(available_thrust)
                     self._wait_to_go_around_again()
-
         self.vessel.control.throttle = 0.0
         return
 
