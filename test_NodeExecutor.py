@@ -304,49 +304,6 @@ class Test_NodeExecutor_methods(unittest.TestCase):
             calls = [call('Ignition'), call('MECO')]
             Hal9000._print_burn_event.assert_has_calls(calls)
 
-    def test__print_burn_event(self, mock_conn):
-        """Check that a message is printed to stdout with the time to T0 appended."""
-        mock_conn().configure_mock(**self.CONN_ATTRS)
-        TEST_MSG = 'Test event happened'
-        STDOUT_CALLS = [call(f'Test event happened at T0-20 seconds')]
-        Hal9000 = NodeExecutor()
-        with patch('sys.stdout', spec=True) as mock_stdout:
-            Hal9000._print_burn_event(TEST_MSG)
-            mock_stdout.write.assert_has_calls(STDOUT_CALLS)
-
-    def test__burn_loop(self, mock_conn):
-        """Check that the throttle is managed until the burn is complete, with staging."""
-        def _false_once_then_true():
-            yield False
-            while True:
-                yield True
-
-        mock_conn().configure_mock(**self.CONN_ATTRS)
-        Hal9000 = NodeExecutor()
-        dV_left = 100
-        mock_conn().space_center.active_vessel.auto_pilot.error = 0
-        mock_conn().stream().__enter__().return_value = dV_left
-        with patch.object(NodeExecutor, '_is_burn_complete',
-                                        side_effect=_false_once_then_true(),):
-            with patch.object(NodeExecutor, '_throttle_manager'):
-                with patch.object(NodeExecutor, '_auto_stage'):
-                    with patch.object(NodeExecutor, '_wait_to_go_around_again'):
-                        Hal9000._burn_loop()
-                        Hal9000._wait_to_go_around_again.assert_called_once_with()
-                    Hal9000._auto_stage.assert_called_once_with(Hal9000.thrust)
-                Hal9000._throttle_manager.assert_called_once_with(dV_left)
-            Hal9000._is_burn_complete.assert_has_calls([call(dV_left), call(dV_left)])
-
-    def test__print_burn_error(self, mock_conn):
-        """Check that the remaining deltaV is printed to stdout."""
-        mock_conn().configure_mock(**self.CONN_ATTRS)
-        Hal9000 = NodeExecutor()
-        dV_left = 0.1
-        STDOUT_CALLS = [call(f'{(dV_left/Hal9000.delta_v):2.2f}% of original dV left.')]
-        with patch('sys.stdout', spec=True) as mock_stdout:
-            Hal9000._print_burn_error(dV_left)
-            mock_stdout.write.assert_has_calls(STDOUT_CALLS)
-
     def test_execute_node(self, mock_conn):
         """Check it progressively approaches the node, and then calls burn_baby_burn()."""
         mock_conn().configure_mock(**self.CONN_ATTRS)
@@ -456,6 +413,49 @@ class Test_NodeExecutor_private_methods(unittest.TestCase):
         Hal9000 = NodeExecutor()
         self.assertFalse(Hal9000._is_burn_complete(error=10))
         self.assertTrue(Hal9000._is_burn_complete(error=30))
+
+    def test__print_burn_event(self, mock_conn):
+        """Check that a message is printed to stdout with the time to T0 appended."""
+        mock_conn().configure_mock(**self.CONN_ATTRS)
+        TEST_MSG = 'Test event happened'
+        STDOUT_CALLS = [call(f'Test event happened at T0-20 seconds')]
+        Hal9000 = NodeExecutor()
+        with patch('sys.stdout', spec=True) as mock_stdout:
+            Hal9000._print_burn_event(TEST_MSG)
+            mock_stdout.write.assert_has_calls(STDOUT_CALLS)
+
+    def test__burn_loop(self, mock_conn):
+        """Check that the throttle is managed until the burn is complete, with staging."""
+        def _false_once_then_true():
+            yield False
+            while True:
+                yield True
+
+        mock_conn().configure_mock(**self.CONN_ATTRS)
+        Hal9000 = NodeExecutor()
+        dV_left = 100
+        mock_conn().space_center.active_vessel.auto_pilot.error = 0
+        mock_conn().stream().__enter__().return_value = dV_left
+        with patch.object(NodeExecutor, '_is_burn_complete',
+                                        side_effect=_false_once_then_true(),):
+            with patch.object(NodeExecutor, '_throttle_manager'):
+                with patch.object(NodeExecutor, '_auto_stage'):
+                    with patch.object(NodeExecutor, '_wait_to_go_around_again'):
+                        Hal9000._burn_loop()
+                        Hal9000._wait_to_go_around_again.assert_called_once_with()
+                    Hal9000._auto_stage.assert_called_once_with(Hal9000.thrust)
+                Hal9000._throttle_manager.assert_called_once_with(dV_left)
+            Hal9000._is_burn_complete.assert_has_calls([call(dV_left), call(dV_left)])
+
+    def test__print_burn_error(self, mock_conn):
+        """Check that the remaining deltaV is printed to stdout."""
+        mock_conn().configure_mock(**self.CONN_ATTRS)
+        Hal9000 = NodeExecutor()
+        dV_left = 0.1
+        STDOUT_CALLS = [call(f'{(dV_left/Hal9000.delta_v):2.2f}% of original dV left.')]
+        with patch('sys.stdout', spec=True) as mock_stdout:
+            Hal9000._print_burn_error(dV_left)
+            mock_stdout.write.assert_has_calls(STDOUT_CALLS)
 
     def test__wait_to_go_around_again(self, mock_conn):
         """Check it calls time.sleep() for 10 ms."""
