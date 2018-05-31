@@ -64,13 +64,6 @@ class HohmannTransfer(object):
         - transfer_to_rendezvous()
 
     See the relevant docstrings for details.
-
-    The following methods are private:
-        - period_from_sma()
-        - sma_from_period()
-        - clamp_to()
-        - __str__()
-        -__repr()
     """
 
     def __init__(self, target_sma=0, delay=0):

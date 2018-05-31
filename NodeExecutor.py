@@ -1,4 +1,8 @@
-"""Simple node execution class."""
+"""
+This module contains the NodeExecutor class.
+
+Supports methods to warp to the node, set the autopilot, and fire the engines during the burn.
+"""
 
 from math import exp
 import time
@@ -6,7 +10,62 @@ import krpc
 
 
 class NodeExecutor(object):
-    """Automatically execute the next maneuver node."""
+    """
+    Automatically execute pre-planned single burn orbital maneuvers in KSP.
+
+    Maneuver nodes in KSP are used to set up and then execute planned burns. They are defined
+    as a burn vector and a universal time. The burn vector represents the direction and
+    magnitude of the change in orbital velocity. The universal time marks when the change
+    would occur, if it were done instantly.
+
+    In practice, the change in orbital velocity can't be instantaneous. The duration of the
+    burn has a lower bound driven by the maximum acceleration the vessel is capable of, and
+    best practice is to time the burn such that it is evenly distributed before and after the
+    node's universal time. On the other hand, if the burn duration is too short, accuracy
+    suffers, and best practice is then to throttle the engines during the burn.
+
+    When you create an instance with no arguments, it loads the next maneuver node of the
+    current active vessel, and defaults the minimum burn duration to 4 seconds:
+        from NodeExecutor import NodeExecutor
+        Hal9000 = NodeExecutor()
+
+    You can adjust the minimum burn duration via keyword argument or via attribute:
+        Hal9000 = NodeExecutor(minimum_burn_time=10)
+        Hal9000.minimum_burn_time = 4
+
+    The instance will calculate the burn start time, and the maximum throttle value to
+    obey the minimum burn duration. It will provide the remaining time before burn start:
+        print(Hal9000)
+
+    You can then make the instance warp the maneuver and manage it for you, throttling down
+    towards the end of the burn to increase accuracy:
+        Hal9000.execute_node()
+
+    If you want to chain multiple maneuvers automatically, you can use the has_node attribute
+    to control that process:
+        while Hal9000.has_node:
+            Hal9000.execute_node()
+
+    The following attributes are read/write:
+        - minimum_burn_time
+
+    The following attributes are read-only:
+        - node
+        - has_node
+        - delta_v
+        - burn_time_at_max_thrust
+        - maximum_throttle
+        - burn_time
+        - burn_ut
+
+    The following methods can be used to directly manage the execution of the maneuver:
+        - align_to_burn()
+        - warp_safely_to_burn()
+        - wait_until_ut()
+        - burn_baby_burn()
+
+        See the relevant docstrings for details.
+    """
 
     def __init__(self, minimum_burn_time=4):
         """Create a connection to krpc and initialize from active vessel."""
