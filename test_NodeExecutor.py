@@ -42,22 +42,22 @@ class Test_NodeExecutor_init(unittest.TestCase):
         mock_conn.assert_called_once_with(name='NodeExecutor')
 
     @patch('krpc.connect', spec=True)
-    def test_init_minimum_burn_time_no_karg(self, mock_conn):
-        """Check that __init__ w/o karg sets minimum_burn_time to 4."""
+    def test_init_minimum_burn_duration_no_karg(self, mock_conn):
+        """Check that __init__ w/o karg sets minimum_burn_duration to 4."""
         Hal9000 = NodeExecutor()
-        self.assertEqual(Hal9000.minimum_burn_time, 4)
+        self.assertEqual(Hal9000.minimum_burn_duration, 4)
 
     @patch('krpc.connect', spec=True)
-    def test_init_minimum_burn_time(self, mock_conn):
-        """Check that __init__ with minimum_burn_time karg sets it."""
-        Hal9000 = NodeExecutor(minimum_burn_time=10)
-        self.assertEqual(Hal9000.minimum_burn_time, 10)
+    def test_init_minimum_burn_duration(self, mock_conn):
+        """Check that __init__ with minimum_burn_duration karg sets it."""
+        Hal9000 = NodeExecutor(minimum_burn_duration=10)
+        self.assertEqual(Hal9000.minimum_burn_duration, 10)
 
     @patch('krpc.connect', spec=True)
-    def test_init_minimum_burn_time_negative_value(self, mock_conn):
+    def test_init_minimum_burn_duration_negative_value(self, mock_conn):
         """Check that __init__ raises AssertionError with negative value for karg."""
         try:
-            NodeExecutor(minimum_burn_time=-10)
+            NodeExecutor(minimum_burn_duration=-10)
         except Exception as e:
             self.assertIsInstance(e, AssertionError)
         return
@@ -91,8 +91,8 @@ class Test_NodeExecutor_ro_attributes(unittest.TestCase):
                            'space_center.active_vessel.mass': 40000000,
                            'space_center.ut': 1980}
 
-        self.BURN_TIME0 = 29.9
-        self.BURN_TIME1 = 5988.6
+        self.burn_duration0 = 29.9
+        self.burn_duration1 = 5988.6
 
     def tearDown(self):
         """Delete the mock objects."""
@@ -102,8 +102,8 @@ class Test_NodeExecutor_ro_attributes(unittest.TestCase):
         del(self.CONN_ATTR0)
         del(self.CONN_ATTR1)
 
-        del(self.BURN_TIME0)
-        del(self.BURN_TIME1)
+        del(self.burn_duration0)
+        del(self.burn_duration1)
 
     def test_node(self, mock_conn):
         """Check that node is the first node from active vessel."""
@@ -149,42 +149,44 @@ class Test_NodeExecutor_ro_attributes(unittest.TestCase):
         Hal9000 = NodeExecutor()
         self.assertEqual(Hal9000.delta_v, self.NODE0.delta_v)
 
-    def test_burn_time_at_max_thrust(self, mock_conn):
-        """Check that burn_time_at_max_thrust is set from the node and active vessel."""
+    def test_burn_duration_at_max_thrust(self, mock_conn):
+        """Check that burn_duration_at_max_thrust is set from the node and active vessel."""
         with self.subTest('first set of values'):
             mock_conn().configure_mock(**self.CONN_ATTR0)
             Hal9000 = NodeExecutor()
-            self.assertAlmostEqual(Hal9000.burn_time_at_max_thrust, self.BURN_TIME0, 1)
+            self.assertAlmostEqual(Hal9000.burn_duration_at_max_thrust,
+                                   self.burn_duration0, 1)
 
         with self.subTest('second set of values'):
             mock_conn().configure_mock(**self.CONN_ATTR1)
             Hal9000 = NodeExecutor()
-            self.assertAlmostEqual(Hal9000.burn_time_at_max_thrust, self.BURN_TIME1, 1)
+            self.assertAlmostEqual(Hal9000.burn_duration_at_max_thrust,
+                                   self.burn_duration1, 1)
 
-    def test_maximum_throttle_and_burn_time(self, mock_conn):
-        """Check that maximum_throttle & burn_time are set from minimum_burn_time."""
+    def test_maximum_throttle_and_burn_duration(self, mock_conn):
+        """Check that maximum_throttle & burn_duration are set from minimum_burn_duration."""
         mock_conn().configure_mock(**self.CONN_ATTR0)
 
         with self.subTest('burn time greater than minimum'):
-            Hal9000 = NodeExecutor(minimum_burn_time=self.BURN_TIME0/2)
+            Hal9000 = NodeExecutor(minimum_burn_duration=self.burn_duration0/2)
             self.assertEqual(Hal9000.maximum_throttle, 1)
-            self.assertEqual(Hal9000.burn_time, Hal9000.burn_time_at_max_thrust)
+            self.assertEqual(Hal9000.burn_duration, Hal9000.burn_duration_at_max_thrust)
 
         with self.subTest('no minimum'):
-            Hal9000 = NodeExecutor(minimum_burn_time=0)
+            Hal9000 = NodeExecutor(minimum_burn_duration=0)
             self.assertEqual(Hal9000.maximum_throttle, 1)
-            self.assertAlmostEqual(Hal9000.burn_time, Hal9000.burn_time_at_max_thrust)
+            self.assertAlmostEqual(Hal9000.burn_duration, Hal9000.burn_duration_at_max_thrust)
 
         with self.subTest('burn time less than minimum'):
-            Hal9000 = NodeExecutor(minimum_burn_time=self.BURN_TIME0*2)
+            Hal9000 = NodeExecutor(minimum_burn_duration=self.burn_duration0*2)
             self.assertAlmostEqual(Hal9000.maximum_throttle, 0.5, 3)
-            self.assertEqual(Hal9000.burn_time, Hal9000.minimum_burn_time)
+            self.assertEqual(Hal9000.burn_duration, Hal9000.minimum_burn_duration)
 
     def test_burn_ut(self, mock_conn):
         """Check that burn_ut is set properly."""
         mock_conn().configure_mock(**self.CONN_ATTR0)
         Hal9000 = NodeExecutor()
-        self.assertAlmostEqual(Hal9000.burn_ut, self.NODE0.ut - Hal9000.burn_time/2)
+        self.assertAlmostEqual(Hal9000.burn_ut, self.NODE0.ut - Hal9000.burn_duration/2)
 
 
 @patch('krpc.connect', spec=True)
@@ -379,7 +381,7 @@ class Test_NodeExecutor_private_methods(unittest.TestCase):
                   [50, 1.00, 6.0, True],
                   [25, 1.00, 12.0, True], ]
 
-        for old_thrust, new_thrust, burn_time, calls_made in VALUES:
+        for old_thrust, new_thrust, burn_duration, calls_made in VALUES:
             with self.subTest(f'thrust_ratio: {old_thrust}%'):
                 mock_conn().reset_mock()
                 mock_stdout.reset_mock()
@@ -387,7 +389,7 @@ class Test_NodeExecutor_private_methods(unittest.TestCase):
                 vessel.available_thrust = old_thrust
                 self.assertEqual(Hal9000._auto_stage(100), old_thrust)
                 self.assertAlmostEqual(Hal9000.maximum_throttle, new_thrust, 2)
-                self.assertAlmostEqual(Hal9000.burn_time_at_max_thrust, burn_time, 1)
+                self.assertAlmostEqual(Hal9000.burn_duration_at_max_thrust, burn_duration, 1)
                 if calls_made:
                     control.activate_next_stage.assert_called_once_with()
                     mock_stdout.write.assert_has_calls([call(f'Staged at T0-20 seconds')])
@@ -467,14 +469,14 @@ class Test_NodeExecutor_private_methods(unittest.TestCase):
     def test___str__(self, mock_conn):
         """Check that the __str__() method works."""
         mock_conn().configure_mock(**self.CONN_ATTRS)
-        actual_str = str(NodeExecutor(minimum_burn_time=10))
+        actual_str = str(NodeExecutor(minimum_burn_duration=10))
         expect_str = 'Will burn for 10.0 m/s starting in 15.0 seconds.\n'
         self.assertEqual(actual_str, expect_str)
 
     def test___repr__(self, mock_conn):
         """Check that the __repr__() method works."""
-        actual_str = repr(NodeExecutor(minimum_burn_time=10))
-        expect_str = 'NodeExecutor(minimum_burn_time=10)'
+        actual_str = repr(NodeExecutor(minimum_burn_duration=10))
+        expect_str = 'NodeExecutor(minimum_burn_duration=10)'
         self.assertEqual(actual_str, expect_str)
 
 

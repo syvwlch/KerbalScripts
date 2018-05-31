@@ -30,8 +30,8 @@ class NodeExecutor(object):
         Hal9000 = NodeExecutor()
 
     You can adjust the minimum burn duration via keyword argument or via attribute:
-        Hal9000 = NodeExecutor(minimum_burn_time=10)
-        Hal9000.minimum_burn_time = 4
+        Hal9000 = NodeExecutor(minimum_burn_duration=10)
+        Hal9000.minimum_burn_duration = 4
 
     The instance will calculate the burn start time, and the maximum throttle value to
     obey the minimum burn duration. It will provide the remaining time before burn start:
@@ -47,15 +47,15 @@ class NodeExecutor(object):
             Hal9000.execute_node()
 
     The following attributes are read/write:
-        - minimum_burn_time
+        - minimum_burn_duration
 
     The following attributes are read-only:
         - node
         - has_node
         - delta_v
-        - burn_time_at_max_thrust
+        - burn_duration_at_max_thrust
         - maximum_throttle
-        - burn_time
+        - burn_duration
         - burn_ut
 
     The following methods can be used to directly manage the execution of the maneuver:
@@ -67,13 +67,13 @@ class NodeExecutor(object):
         See the relevant docstrings for details.
     """
 
-    def __init__(self, minimum_burn_time=4):
+    def __init__(self, minimum_burn_duration=4):
         """Create a connection to krpc and initialize from active vessel."""
         self.conn = krpc.connect(name='NodeExecutor')
         self.vessel = self.conn.space_center.active_vessel
-        self.minimum_burn_time = minimum_burn_time
+        self.minimum_burn_duration = minimum_burn_duration
         self.thrust = self.vessel.available_thrust
-        assert(minimum_burn_time >= 0)
+        assert(minimum_burn_duration >= 0)
         self.approach_margins = [180, 5]
         return
 
@@ -96,7 +96,7 @@ class NodeExecutor(object):
         return self.node.delta_v
 
     @property
-    def burn_time_at_max_thrust(self):
+    def burn_duration_at_max_thrust(self):
         """Calculate burn time at max thrust using the rocket equation."""
         F = self.vessel.available_thrust
         Isp = self.vessel.specific_impulse * 9.82
@@ -108,19 +108,19 @@ class NodeExecutor(object):
     @property
     def maximum_throttle(self):
         """Set the maximum throttle to keep burn time above minimum."""
-        if self.minimum_burn_time == 0:
+        if self.minimum_burn_duration == 0:
             return 1
-        return min(1, self.burn_time_at_max_thrust/self.minimum_burn_time)
+        return min(1, self.burn_duration_at_max_thrust/self.minimum_burn_duration)
 
     @property
-    def burn_time(self):
+    def burn_duration(self):
         """Set the burn time based on maximum throttle."""
-        return max(self.burn_time_at_max_thrust, self.minimum_burn_time)
+        return max(self.burn_duration_at_max_thrust, self.minimum_burn_duration)
 
     @property
     def burn_ut(self):
         """Set the time to start the burn."""
-        return self.node.ut - self.burn_time/2
+        return self.node.ut - self.burn_duration/2
 
     def align_to_burn(self):
         """Set the autopilot to align with the burn vector."""
@@ -135,7 +135,7 @@ class NodeExecutor(object):
         return
 
     def warp_safely_to_burn(self, margin):
-        """Warp to margin seconds before burn_time."""
+        """Warp to margin seconds before burn_duration."""
         warp_time = self.burn_ut - margin
         if self.conn.space_center.ut < warp_time:
             print(f'Warping to  T0-{(self.node.ut-warp_time):.0f} seconds')
@@ -159,7 +159,7 @@ class NodeExecutor(object):
         dV_ratio = dV_left / self.delta_v
         # decrease linearly to 5% of throttle_max for last 10% of dV
         throttle = self._clamp(dV_ratio*10, floor=0.05, ceiling=1)
-        # obey maximum_throttle to keep burn time above minimum_burn_time
+        # obey maximum_throttle to keep burn time above minimum_burn_duration
         self.vessel.control.throttle = self.maximum_throttle * throttle
         return
 
@@ -250,14 +250,14 @@ class NodeExecutor(object):
 
     def __repr__(self):
         """Create the formal string representation of the class."""
-        line = f'NodeExecutor(minimum_burn_time='
-        line += f'{self.minimum_burn_time})'
+        line = f'NodeExecutor(minimum_burn_duration='
+        line += f'{self.minimum_burn_duration})'
         return line
 
 
 # main loop
 if __name__ == "__main__":
-    hal9000 = NodeExecutor(minimum_burn_time=4)
+    hal9000 = NodeExecutor(minimum_burn_duration=4)
     while hal9000.has_node:
         hal9000.execute_node()
     print('No nodes left to execute.')
