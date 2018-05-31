@@ -37,7 +37,7 @@ class NodeExecutor(object):
     obey the minimum burn duration. It will provide the remaining time before burn start:
         print(Hal9000)
 
-    You can then make the instance warp the maneuver and manage it for you, throttling down
+    You can then make the instance warp to the maneuver and manage it for you, throttling down
     towards the end of the burn to increase accuracy:
         Hal9000.execute_node()
 
