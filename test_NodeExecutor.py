@@ -396,14 +396,14 @@ class Test_NodeExecutor_private_methods(unittest.TestCase):
                   [50, 1.00, 6.0, True],
                   [25, 1.00, 12.0, True], ]
 
-        for old_thrust, new_thrust, burn_duration, calls_made in VALUES:
-            with self.subTest(f'thrust_ratio: {old_thrust}%'):
+        for new_thrust, throttle, burn_duration, calls_made in VALUES:
+            with self.subTest(f'thrust_ratio: {new_thrust}%'):
                 mock_conn().reset_mock()
                 mock_stdout.reset_mock()
                 mock_time.reset_mock()
-                vessel.available_thrust = old_thrust
-                self.assertEqual(Hal9000._auto_stage(100), old_thrust)
-                self.assertAlmostEqual(Hal9000.maximum_throttle, new_thrust, 2)
+                vessel.available_thrust = new_thrust
+                self.assertEqual(Hal9000._auto_stage(100), new_thrust)
+                self.assertAlmostEqual(Hal9000.maximum_throttle, throttle, 2)
                 self.assertAlmostEqual(
                     Hal9000.burn_duration_at_max_thrust, burn_duration, 1)
                 if calls_made:
