@@ -135,5 +135,40 @@ class Test_Launcher_private_methods(unittest.TestCase):
         self.assertEqual(actual_str, expect_str)
 
 
+@patch('krpc.connect', spec=True)
+class Test_Launcher_public_methods(unittest.TestCase):
+    """
+    Test the Launcher class public methods.
+
+    Requires a patch on the KRPC server connection for:
+        - active vessel
+    """
+
+    def test_ignition(self, mock_conn):
+        """Should engage autopilot, wait, & stage."""
+        capcom = Launcher(target_altitude=10,
+                          target_inclination=30)
+        vessel = mock_conn().space_center.active_vessel
+        vessel.control.sas = True
+        vessel.control.rcs = True
+        vessel.control.throttle = 0.0
+        vessel.surface_reference_frame = 'RF'
+
+        with patch('Launcher.time', spec=True) as mock_time:
+            vessel.auto_pilot.engage.assert_not_called()
+            vessel.control.activate_next_stage.assert_not_called()
+            mock_time.sleep.assert_not_called()
+            capcom.ignition()
+            self.assertEqual(vessel.auto_pilot.target_pitch, 90)
+            self.assertEqual(vessel.auto_pilot.target_heading, 90-30)
+            self.assertEqual(vessel.auto_pilot.target_roll, 180)
+            self.assertEqual(vessel.auto_pilot.reference_frame, 'RF')
+            self.assertIs(vessel.control.sas, False)
+            self.assertIs(vessel.control.rcs, False)
+            self.assertAlmostEqual(vessel.control.throttle, 1.0)
+            vessel.auto_pilot.engage.assert_called_once_with()
+            vessel.control.activate_next_stage.assert_called_once_with()
+            mock_time.sleep.assert_called_once_with(1)
+
 if __name__ == '__main__':
     unittest.main()
