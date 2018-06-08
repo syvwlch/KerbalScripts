@@ -28,10 +28,7 @@ class Test_NodeExecutor_init(unittest.TestCase):
     """
 
     def test_no_krpc_connection(self):
-        """
-        Check that __init__ raises ConnectionRefusedError
-        if it can't reach KRPC server.
-        """
+        """Server unreachable should raise ConnectionRefusedError."""
         try:
             NodeExecutor()
         except Exception as e:
@@ -58,9 +55,7 @@ class Test_NodeExecutor_init(unittest.TestCase):
 
     @patch('krpc.connect', spec=True)
     def test_init_minimum_burn_duration_negative_value(self, mock_conn):
-        """
-        Check that __init__ raises AssertionError with negative value for karg.
-        """
+        """Negative value for karg should raise AssertionError."""
         try:
             NodeExecutor(minimum_burn_duration=-10)
         except Exception as e:
@@ -132,10 +127,7 @@ class Test_NodeExecutor_ro_attributes(unittest.TestCase):
             self.assertEqual(Hal9000.node, self.NODE0)
 
     def test_has_node(self, mock_conn):
-        """
-        Check that has_node is True only when the active vessel
-        has at least one node.
-        """
+        """Active vessel without nodes should set has_node to False."""
         control = mock_conn().space_center.active_vessel.control
 
         with self.subTest('zero nodes'):
@@ -160,10 +152,7 @@ class Test_NodeExecutor_ro_attributes(unittest.TestCase):
         self.assertEqual(Hal9000.delta_v, self.NODE0.delta_v)
 
     def test_burn_duration_at_max_thrust(self, mock_conn):
-        """
-        Check that burn_duration_at_max_thrust is set
-        from the node and active vessel.
-        """
+        """Node should set burn_duration_at_max_thrust."""
         with self.subTest('first set of values'):
             mock_conn().configure_mock(**self.CONN_ATTR0)
             Hal9000 = NodeExecutor()
@@ -177,10 +166,7 @@ class Test_NodeExecutor_ro_attributes(unittest.TestCase):
                                    self.burn_duration1, 1)
 
     def test_maximum_throttle_and_burn_duration(self, mock_conn):
-        """
-        Check that maximum_throttle & burn_duration are set
-        from minimum_burn_duration.
-        """
+        """Setting minimum_burn_duration should set burn throttle, duration."""
         mock_conn().configure_mock(**self.CONN_ATTR0)
 
         with self.subTest('burn time greater than minimum'):
@@ -294,10 +280,7 @@ class Test_NodeExecutor_methods(unittest.TestCase):
             mock_stdout.write.assert_has_calls(STDOUT_CALLS)
 
     def test_wait_until_ut(self, mock_conn):
-        """
-        Check that wait_until_ut doesn't call time.sleep
-        if ut is now or already past.
-        """
+        """Should not call time.sleep if ut already past."""
         Hal9000 = NodeExecutor()
 
         with patch('NodeExecutor.time', spec=True) as mock_time:
@@ -334,10 +317,7 @@ class Test_NodeExecutor_methods(unittest.TestCase):
             Hal9000._print_burn_event.assert_has_calls(calls)
 
     def test_execute_node(self, mock_conn):
-        """
-        Check it progressively approaches the node,
-        and then calls burn_baby_burn().
-        """
+        """Should gradually approach node, and call burn_baby_burn()."""
         mock_conn().configure_mock(**self.CONN_ATTRS)
         Hal9000 = NodeExecutor()
         with patch.object(NodeExecutor, 'burn_baby_burn'):
@@ -379,10 +359,7 @@ class Test_NodeExecutor_private_methods(unittest.TestCase):
         del(self.CONN_ATTRS)
 
     def test__clamp(self, mock_conn):
-        """
-        Check that the _clamp() method clamps the value
-        between ceiling and floor.
-        """
+        """Should clamp the value between ceiling and floor."""
         Hal9000 = NodeExecutor()
 
         values = [[-1, 0, 2, 0], [1, 2, 0, 1],
@@ -392,10 +369,7 @@ class Test_NodeExecutor_private_methods(unittest.TestCase):
             self.assertEqual(Hal9000._clamp(value, floor, ceiling), result)
 
     def test__throttle_manager(self, mock_conn):
-        """
-        Check that throttle decreases linearly
-        to 5% of throttle_max for last 10% of dV.
-        """
+        """Should decrease throttle linearly towards end of burn."""
         mock_conn().configure_mock(**self.CONN_ATTRS)
         Hal9000 = NodeExecutor()
         control = mock_conn().space_center.active_vessel.control
@@ -411,10 +385,7 @@ class Test_NodeExecutor_private_methods(unittest.TestCase):
     @patch('NodeExecutor.time', spec=True)
     @patch('sys.stdout', spec=True)
     def test__auto_stage(self, mock_stdout, mock_time, mock_conn):
-        """
-        Check returns available_thrust,
-        w/ side effect of staging if drops 10%+.
-        """
+        """Should autostage if thrust drops 10% or more."""
         mock_conn().configure_mock(**self.CONN_ATTRS)
         Hal9000 = NodeExecutor()
         vessel = mock_conn().space_center.active_vessel
@@ -445,10 +416,7 @@ class Test_NodeExecutor_private_methods(unittest.TestCase):
                     mock_time.sleep.assert_not_called()
 
     def test__cleanup(self, mock_conn):
-        """
-        Check that _cleanup() calls disengage() on autopilot,
-        and remove() on node.
-        """
+        """Should call disengage() on autopilot & remove() on node."""
         Hal9000 = NodeExecutor()
         vessel = mock_conn().space_center.active_vessel
 
@@ -465,9 +433,7 @@ class Test_NodeExecutor_private_methods(unittest.TestCase):
         self.assertTrue(Hal9000._is_burn_complete(error=30))
 
     def test__print_burn_event(self, mock_conn):
-        """
-        Check that a message is printed to stdout with the time to T0 appended.
-        """
+        """Should print to stdout with the time to T0 appended."""
         mock_conn().configure_mock(**self.CONN_ATTRS)
         TEST_MSG = 'Test event happened'
         STDOUT_CALLS = [call(f'Test event happened at T0-20 seconds')]
@@ -477,10 +443,7 @@ class Test_NodeExecutor_private_methods(unittest.TestCase):
             mock_stdout.write.assert_has_calls(STDOUT_CALLS)
 
     def test__burn_loop(self, mock_conn):
-        """
-        Check that the throttle is managed until the burn is complete,
-        with staging.
-        """
+        """Should manage throttle during burn, with staging."""
         def _false_once_then_true():
             yield False
             while True:
