@@ -171,7 +171,7 @@ class HohmannTransfer(object):
         return self.vessel.flight(rf).longitude
 
     def clamp_to(self, angle, ceiling):
-        """Clamp the value of an angle between zero and ceiling, wrapping around."""
+        """Clamp an angle between zero and ceiling, wrapping around."""
         ceiling = abs(ceiling)
         while angle < 0:
             angle += ceiling
