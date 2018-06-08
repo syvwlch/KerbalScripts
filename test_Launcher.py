@@ -119,6 +119,21 @@ class Test_Launcher_private_methods(unittest.TestCase):
             capcom._wait_to_go_around_again()
             mock_time.sleep.assert_called_once_with(0.01)
 
+    def test___str__(self, mock_conn):
+        """Check that the __str__() method works."""
+        actual_str = str(Launcher(target_altitude=1000))
+        expect_str = 'Will launch to 1.0km  '
+        expect_str += 'and set up the circularization maneuver node.\n'
+        self.assertEqual(actual_str, expect_str)
+
+    def test___repr__(self, mock_conn):
+        """Check that the __repr__() method works."""
+        actual_str = repr(Launcher(target_altitude=10,
+                                   target_inclination=20))
+        expect_str = 'Launcher(target_altitude=10, '
+        expect_str += 'target_inclination=20)'
+        self.assertEqual(actual_str, expect_str)
+
 
 if __name__ == '__main__':
     unittest.main()
