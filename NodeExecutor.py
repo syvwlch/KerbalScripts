@@ -1,7 +1,8 @@
 """
 This module contains the NodeExecutor class.
 
-Supports methods to warp to the node, set the autopilot, and fire the engines during the burn.
+Supports methods to warp to the node, set the autopilot,
+and fire the engines during the burn.
 """
 
 from math import exp
@@ -13,36 +14,41 @@ class NodeExecutor(object):
     """
     Automatically execute pre-planned single burn orbital maneuvers in KSP.
 
-    Maneuver nodes in KSP are used to set up and then execute planned burns. They are defined
-    as a burn vector and a universal time. The burn vector represents the direction and
-    magnitude of the change in orbital velocity. The universal time marks when the change
-    would occur, if it were done instantly.
+    Maneuver nodes in KSP are used to set up and then execute planned burns.
+    They are defined as a burn vector and a universal time. The burn vector
+    represents the direction and magnitude of the change in orbital velocity.
+    The universal time marks when the change would occur, if it were done
+    instantly.
 
-    In practice, the change in orbital velocity can't be instantaneous. The duration of the
-    burn has a lower bound driven by the maximum acceleration the vessel is capable of, and
-    best practice is to time the burn such that it is evenly distributed before and after the
-    node's universal time. On the other hand, if the burn duration is too short, accuracy
-    suffers, and best practice is then to throttle the engines during the burn.
+    In practice, the change in orbital velocity can't be instantaneous. The
+    duration of the burn has a lower bound driven by the maximum acceleration
+    the vessel is capable of, and best practice is to time the burn such that
+    it is evenly distributed before and after the node's universal time. On the
+    other hand, if the burn duration is too short, accuracy suffers, and best
+    practice is then to throttle the engines during the burn.
 
-    When you create an instance with no arguments, it loads the next maneuver node of the
-    current active vessel, and defaults the minimum burn duration to 4 seconds:
+    When you create an instance with no arguments, it loads the next maneuver
+    node of the current active vessel, and defaults the minimum burn duration
+    to 4 seconds:
         from NodeExecutor import NodeExecutor
         Hal9000 = NodeExecutor()
 
-    You can adjust the minimum burn duration via keyword argument or via attribute:
+    You can adjust the minimum burn duration via keyword argument or via
+    attribute:
         Hal9000 = NodeExecutor(minimum_burn_duration=10)
         Hal9000.minimum_burn_duration = 4
 
-    The instance will calculate the burn start time, and the maximum throttle value to
-    obey the minimum burn duration. It will provide the remaining time before burn start:
+    The instance will calculate the burn start time, and the maximum throttle
+    value to obey the minimum burn duration. It will provide the remaining time
+    before burn start:
         print(Hal9000)
 
-    You can then make the instance warp to the maneuver and manage it for you, throttling down
-    towards the end of the burn to increase accuracy:
+    You can then make the instance warp to the maneuver and manage it for you,
+    throttling down towards the end of the burn to increase accuracy:
         Hal9000.execute_node()
 
-    If you want to chain multiple maneuvers automatically, you can use the has_node attribute
-    to control that process:
+    If you want to chain multiple maneuvers automatically, you can use the
+    has_node attribute to control that process:
         while Hal9000.has_node:
             Hal9000.execute_node()
 
@@ -58,7 +64,8 @@ class NodeExecutor(object):
         - burn_duration
         - burn_ut
 
-    The following methods can be used to directly manage the execution of the maneuver:
+    The following methods can be used to directly manage the execution of the
+    maneuver:
         - align_to_burn()
         - warp_safely_to_burn()
         - wait_until_ut()
@@ -110,12 +117,14 @@ class NodeExecutor(object):
         """Set the maximum throttle to keep burn time above minimum."""
         if self.minimum_burn_duration == 0:
             return 1
-        return min(1, self.burn_duration_at_max_thrust/self.minimum_burn_duration)
+        return min(1,
+                   self.burn_duration_at_max_thrust/self.minimum_burn_duration)
 
     @property
     def burn_duration(self):
         """Set the burn time based on maximum throttle."""
-        return max(self.burn_duration_at_max_thrust, self.minimum_burn_duration)
+        return max(self.burn_duration_at_max_thrust,
+                   self.minimum_burn_duration)
 
     @property
     def burn_ut(self):
@@ -124,7 +133,8 @@ class NodeExecutor(object):
 
     def align_to_burn(self):
         """Set the autopilot to align with the burn vector."""
-        print(f'Aligning at T0-{(self.node.ut-self.conn.space_center.ut):.0f} seconds')
+        T0 = self.node.ut-self.conn.space_center.ut
+        print(f'Aligning at T0-{T0:.0f} seconds')
         self.ap = self.vessel.auto_pilot
         self.ap.reference_frame = self.node.reference_frame
         self.ap.target_direction = (0, 1, 0)
@@ -173,7 +183,7 @@ class NodeExecutor(object):
         return
 
     def _auto_stage(self, old_thrust):
-        """Return available_thrust, with side effect of staging if it drops more than 10%."""
+        """Return available_thrust, with side effect of staging."""
         try:
             thrust_ratio = self.vessel.available_thrust / old_thrust
         except ZeroDivisionError:
@@ -206,8 +216,12 @@ class NodeExecutor(object):
 
     def _burn_loop(self):
         """Run thru the burn loop."""
-        with self.conn.stream(getattr, self.vessel.auto_pilot, 'error') as error:
-            with self.conn.stream(getattr, self.node, 'remaining_delta_v') as dV_left:
+        with self.conn.stream(getattr,
+                              self.vessel.auto_pilot,
+                              'error') as error:
+            with self.conn.stream(getattr,
+                                  self.node,
+                                  'remaining_delta_v') as dV_left:
                 available_thrust = self.vessel.available_thrust
                 while not self._is_burn_complete(error()):
                     self._throttle_manager(dV_left())
@@ -221,7 +235,7 @@ class NodeExecutor(object):
         print(f'{dV_left/self.delta_v:2.2f}% of original dV left.')
 
     def burn_baby_burn(self):
-        """Set up the stream for dV_left, run the burn loop, and then clean up."""
+        """Set up the stream for dV_left, run the burn loop, and clean up."""
         self._print_burn_event('Ignition')
 
         self._burn_loop()
