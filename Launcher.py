@@ -7,7 +7,7 @@ from NodeExecutor import NodeExecutor
 
 
 class Launcher(object):
-    """Automatically launch to target_altitude and set up the circulization node."""
+    """Automatically launch to target_altitude & set up circulization node."""
 
     def __init__(self, target_altitude, target_inclination=0):
         """Create a connection to krpc and initialize from active vessel."""
@@ -57,7 +57,7 @@ class Launcher(object):
         return
 
     def _auto_stage(self, old_thrust):
-        """Return available_thrust, with side effect of staging if it drops more than 10%."""
+        """Return available_thrust, with side effect of staging."""
         try:
             thrust_ratio = self.vessel.available_thrust / old_thrust
         except ZeroDivisionError:
