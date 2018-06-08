@@ -28,7 +28,10 @@ class Test_NodeExecutor_init(unittest.TestCase):
     """
 
     def test_no_krpc_connection(self):
-        """Check that __init__ raises ConnectionRefusedError if it can't reach KRPC server."""
+        """
+        Check that __init__ raises ConnectionRefusedError
+        if it can't reach KRPC server.
+        """
         try:
             NodeExecutor()
         except Exception as e:
@@ -55,7 +58,9 @@ class Test_NodeExecutor_init(unittest.TestCase):
 
     @patch('krpc.connect', spec=True)
     def test_init_minimum_burn_duration_negative_value(self, mock_conn):
-        """Check that __init__ raises AssertionError with negative value for karg."""
+        """
+        Check that __init__ raises AssertionError with negative value for karg.
+        """
         try:
             NodeExecutor(minimum_burn_duration=-10)
         except Exception as e:
@@ -78,18 +83,20 @@ class Test_NodeExecutor_ro_attributes(unittest.TestCase):
         self.NODE0 = node(delta_v=10, ut=20)
         self.NODE1 = node(delta_v=30, ut=40)
 
-        self.CONN_ATTR0 = {'space_center.active_vessel.control.nodes': (self.NODE0,
-                                                                        self.NODE1),
-                           'space_center.active_vessel.available_thrust': 100,
-                           'space_center.active_vessel.specific_impulse': 200,
-                           'space_center.active_vessel.mass': 300,
-                           'space_center.ut': 1980}
+        self.CONN_ATTR0 = {
+            'space_center.active_vessel.control.nodes': (self.NODE0,
+                                                         self.NODE1),
+            'space_center.active_vessel.available_thrust': 100,
+            'space_center.active_vessel.specific_impulse': 200,
+            'space_center.active_vessel.mass': 300,
+            'space_center.ut': 1980}
 
-        self.CONN_ATTR1 = {'space_center.active_vessel.control.nodes': (self.NODE1,),
-                           'space_center.active_vessel.available_thrust': 200000,
-                           'space_center.active_vessel.specific_impulse': 800,
-                           'space_center.active_vessel.mass': 40000000,
-                           'space_center.ut': 1980}
+        self.CONN_ATTR1 = {
+            'space_center.active_vessel.control.nodes': (self.NODE1,),
+            'space_center.active_vessel.available_thrust': 200000,
+            'space_center.active_vessel.specific_impulse': 800,
+            'space_center.active_vessel.mass': 40000000,
+            'space_center.ut': 1980}
 
         self.burn_duration0 = 29.9
         self.burn_duration1 = 5988.6
@@ -125,7 +132,10 @@ class Test_NodeExecutor_ro_attributes(unittest.TestCase):
             self.assertEqual(Hal9000.node, self.NODE0)
 
     def test_has_node(self, mock_conn):
-        """Check that has_node is True only when the active vessel has at least one node."""
+        """
+        Check that has_node is True only when the active vessel
+        has at least one node.
+        """
         control = mock_conn().space_center.active_vessel.control
 
         with self.subTest('zero nodes'):
@@ -150,7 +160,10 @@ class Test_NodeExecutor_ro_attributes(unittest.TestCase):
         self.assertEqual(Hal9000.delta_v, self.NODE0.delta_v)
 
     def test_burn_duration_at_max_thrust(self, mock_conn):
-        """Check that burn_duration_at_max_thrust is set from the node and active vessel."""
+        """
+        Check that burn_duration_at_max_thrust is set
+        from the node and active vessel.
+        """
         with self.subTest('first set of values'):
             mock_conn().configure_mock(**self.CONN_ATTR0)
             Hal9000 = NodeExecutor()
@@ -164,29 +177,36 @@ class Test_NodeExecutor_ro_attributes(unittest.TestCase):
                                    self.burn_duration1, 1)
 
     def test_maximum_throttle_and_burn_duration(self, mock_conn):
-        """Check that maximum_throttle & burn_duration are set from minimum_burn_duration."""
+        """
+        Check that maximum_throttle & burn_duration are set
+        from minimum_burn_duration.
+        """
         mock_conn().configure_mock(**self.CONN_ATTR0)
 
         with self.subTest('burn time greater than minimum'):
             Hal9000 = NodeExecutor(minimum_burn_duration=self.burn_duration0/2)
             self.assertEqual(Hal9000.maximum_throttle, 1)
-            self.assertEqual(Hal9000.burn_duration, Hal9000.burn_duration_at_max_thrust)
+            self.assertEqual(Hal9000.burn_duration,
+                             Hal9000.burn_duration_at_max_thrust)
 
         with self.subTest('no minimum'):
             Hal9000 = NodeExecutor(minimum_burn_duration=0)
             self.assertEqual(Hal9000.maximum_throttle, 1)
-            self.assertAlmostEqual(Hal9000.burn_duration, Hal9000.burn_duration_at_max_thrust)
+            self.assertAlmostEqual(Hal9000.burn_duration,
+                                   Hal9000.burn_duration_at_max_thrust)
 
         with self.subTest('burn time less than minimum'):
             Hal9000 = NodeExecutor(minimum_burn_duration=self.burn_duration0*2)
             self.assertAlmostEqual(Hal9000.maximum_throttle, 0.5, 3)
-            self.assertEqual(Hal9000.burn_duration, Hal9000.minimum_burn_duration)
+            self.assertEqual(Hal9000.burn_duration,
+                             Hal9000.minimum_burn_duration)
 
     def test_burn_ut(self, mock_conn):
         """Check that burn_ut is set properly."""
         mock_conn().configure_mock(**self.CONN_ATTR0)
         Hal9000 = NodeExecutor()
-        self.assertAlmostEqual(Hal9000.burn_ut, self.NODE0.ut - Hal9000.burn_duration/2)
+        self.assertAlmostEqual(
+            Hal9000.burn_ut, self.NODE0.ut - Hal9000.burn_duration/2)
 
 
 @patch('krpc.connect', spec=True)
@@ -200,13 +220,16 @@ class Test_NodeExecutor_methods(unittest.TestCase):
 
     def setUp(self):
         """Set up the mock objects."""
-        node = namedtuple('node', 'delta_v ut reference_frame remaining_delta_v')
-        self.NODE0 = node(delta_v=10, ut=2000, reference_frame='RF', remaining_delta_v=0.1)
-        self.CONN_ATTRS = {'space_center.active_vessel.control.nodes': (self.NODE0,),
-                           'space_center.active_vessel.available_thrust': 100,
-                           'space_center.active_vessel.specific_impulse': 200,
-                           'space_center.active_vessel.mass': 30,
-                           'space_center.ut': 1980}
+        node = namedtuple(
+            'node', 'delta_v ut reference_frame remaining_delta_v')
+        self.NODE0 = node(delta_v=10, ut=2000,
+                          reference_frame='RF', remaining_delta_v=0.1)
+        self.CONN_ATTRS = {
+            'space_center.active_vessel.control.nodes': (self.NODE0,),
+            'space_center.active_vessel.available_thrust': 100,
+            'space_center.active_vessel.specific_impulse': 200,
+            'space_center.active_vessel.mass': 30,
+            'space_center.ut': 1980}
 
     def tearDown(self):
         """Delete the mock objects."""
@@ -248,29 +271,33 @@ class Test_NodeExecutor_methods(unittest.TestCase):
         MARGIN = 10
         Hal9000 = NodeExecutor()
         BURN_UT = Hal9000.burn_ut
+        space_center = mock_conn().space_center
 
         with self.subTest('node already past'):
-            mock_conn().space_center.ut = BURN_UT
+            space_center.ut = BURN_UT
             Hal9000.warp_safely_to_burn(margin=MARGIN)
-            mock_conn().space_center.warp_to.assert_not_called()
+            space_center.warp_to.assert_not_called()
             mock_stdout.write.assert_not_called()
 
         with self.subTest('node is now'):
-            mock_conn().space_center.ut = BURN_UT - MARGIN
+            space_center.ut = BURN_UT - MARGIN
             Hal9000.warp_safely_to_burn(margin=MARGIN)
-            mock_conn().space_center.warp_to.assert_not_called()
+            space_center.warp_to.assert_not_called()
             mock_stdout.write.assert_not_called()
 
         with self.subTest('node still in future'):
-            mock_conn().space_center.ut = BURN_UT - MARGIN - 1
+            space_center.ut = BURN_UT - MARGIN - 1
             Hal9000.warp_safely_to_burn(margin=MARGIN)
-            mock_conn().space_center.warp_to.assert_called_with(BURN_UT - MARGIN)
+            space_center.warp_to.assert_called_with(BURN_UT - MARGIN)
             T0 = self.NODE0.ut - BURN_UT + MARGIN
             STDOUT_CALLS = [call(f'Warping to  T0-{T0:.0f} seconds')]
             mock_stdout.write.assert_has_calls(STDOUT_CALLS)
 
     def test_wait_until_ut(self, mock_conn):
-        """Check that wait_until_ut doesn't call time.sleep if ut is now or already past."""
+        """
+        Check that wait_until_ut doesn't call time.sleep
+        if ut is now or already past.
+        """
         Hal9000 = NodeExecutor()
 
         with patch('NodeExecutor.time', spec=True) as mock_time:
@@ -300,13 +327,17 @@ class Test_NodeExecutor_methods(unittest.TestCase):
                     with patch.object(NodeExecutor, '_cleanup'):
                         Hal9000.burn_baby_burn()
                         Hal9000._cleanup.assert_called_once_with()
-                    Hal9000._print_burn_error.assert_called_once_with(remaining_delta_v)
+                    Hal9000._print_burn_error.assert_called_once_with(
+                        remaining_delta_v)
                 Hal9000._burn_loop.assert_called_once_with()
             calls = [call('Ignition'), call('MECO')]
             Hal9000._print_burn_event.assert_has_calls(calls)
 
     def test_execute_node(self, mock_conn):
-        """Check it progressively approaches the node, and then calls burn_baby_burn()."""
+        """
+        Check it progressively approaches the node,
+        and then calls burn_baby_burn().
+        """
         mock_conn().configure_mock(**self.CONN_ATTRS)
         Hal9000 = NodeExecutor()
         with patch.object(NodeExecutor, 'burn_baby_burn'):
@@ -335,11 +366,12 @@ class Test_NodeExecutor_private_methods(unittest.TestCase):
         """Set up the mock objects."""
         node = namedtuple('node', 'delta_v ut reference_frame')
         self.NODE0 = node(delta_v=10, ut=2000, reference_frame='RF')
-        self.CONN_ATTRS = {'space_center.active_vessel.control.nodes': (self.NODE0,),
-                           'space_center.active_vessel.available_thrust': 100,
-                           'space_center.active_vessel.specific_impulse': 200,
-                           'space_center.active_vessel.mass': 30,
-                           'space_center.ut': 1980}
+        self.CONN_ATTRS = {
+            'space_center.active_vessel.control.nodes': (self.NODE0,),
+            'space_center.active_vessel.available_thrust': 100,
+            'space_center.active_vessel.specific_impulse': 200,
+            'space_center.active_vessel.mass': 30,
+            'space_center.ut': 1980}
 
     def tearDown(self):
         """Delete the mock objects."""
@@ -347,30 +379,42 @@ class Test_NodeExecutor_private_methods(unittest.TestCase):
         del(self.CONN_ATTRS)
 
     def test__clamp(self, mock_conn):
-        """Check that the _clamp() method clamps the value between ceiling and floor."""
+        """
+        Check that the _clamp() method clamps the value
+        between ceiling and floor.
+        """
         Hal9000 = NodeExecutor()
 
-        values = [[-1, 0, 2, 0], [1, 2, 0, 1], [0, -1, 1, 0], [-1, -3, -2, -2], ]
+        values = [[-1, 0, 2, 0], [1, 2, 0, 1],
+                  [0, -1, 1, 0], [-1, -3, -2, -2], ]
 
         for value, floor, ceiling, result in values:
             self.assertEqual(Hal9000._clamp(value, floor, ceiling), result)
 
     def test__throttle_manager(self, mock_conn):
-        """Check that throttle decreases linearly to 5% of throttle_max for last 10% of dV."""
+        """
+        Check that throttle decreases linearly
+        to 5% of throttle_max for last 10% of dV.
+        """
         mock_conn().configure_mock(**self.CONN_ATTRS)
         Hal9000 = NodeExecutor()
         control = mock_conn().space_center.active_vessel.control
 
-        values = [[1, 1], [0.1, 1], [0.05, 0.5], [0.005, 0.05], [0.001, 0.05], ]
+        values = [[1, 1], [0.1, 1], [0.05, 0.5],
+                  [0.005, 0.05], [0.001, 0.05], ]
 
         for value, result in values:
             Hal9000._throttle_manager(self.NODE0.delta_v * value)
-            self.assertAlmostEqual(control.throttle, result * Hal9000.maximum_throttle)
+            self.assertAlmostEqual(
+                control.throttle, result * Hal9000.maximum_throttle)
 
     @patch('NodeExecutor.time', spec=True)
     @patch('sys.stdout', spec=True)
     def test__auto_stage(self, mock_stdout, mock_time, mock_conn):
-        """Check returns available_thrust, w/ side effect of staging if drops 10%+."""
+        """
+        Check returns available_thrust,
+        w/ side effect of staging if drops 10%+.
+        """
         mock_conn().configure_mock(**self.CONN_ATTRS)
         Hal9000 = NodeExecutor()
         vessel = mock_conn().space_center.active_vessel
@@ -389,17 +433,22 @@ class Test_NodeExecutor_private_methods(unittest.TestCase):
                 vessel.available_thrust = old_thrust
                 self.assertEqual(Hal9000._auto_stage(100), old_thrust)
                 self.assertAlmostEqual(Hal9000.maximum_throttle, new_thrust, 2)
-                self.assertAlmostEqual(Hal9000.burn_duration_at_max_thrust, burn_duration, 1)
+                self.assertAlmostEqual(
+                    Hal9000.burn_duration_at_max_thrust, burn_duration, 1)
                 if calls_made:
                     control.activate_next_stage.assert_called_once_with()
-                    mock_stdout.write.assert_has_calls([call(f'Staged at T0-20 seconds')])
+                    mock_stdout.write.assert_has_calls(
+                        [call(f'Staged at T0-20 seconds')])
                     mock_time.sleep.assert_has_calls([call(0.1), call(0.1)])
                 else:
                     mock_stdout.write.assert_not_called()
                     mock_time.sleep.assert_not_called()
 
     def test__cleanup(self, mock_conn):
-        """Check that _cleanup() calls disengage() on autopilot and remove() on node."""
+        """
+        Check that _cleanup() calls disengage() on autopilot,
+        and remove() on node.
+        """
         Hal9000 = NodeExecutor()
         vessel = mock_conn().space_center.active_vessel
 
@@ -416,7 +465,9 @@ class Test_NodeExecutor_private_methods(unittest.TestCase):
         self.assertTrue(Hal9000._is_burn_complete(error=30))
 
     def test__print_burn_event(self, mock_conn):
-        """Check that a message is printed to stdout with the time to T0 appended."""
+        """
+        Check that a message is printed to stdout with the time to T0 appended.
+        """
         mock_conn().configure_mock(**self.CONN_ATTRS)
         TEST_MSG = 'Test event happened'
         STDOUT_CALLS = [call(f'Test event happened at T0-20 seconds')]
@@ -426,7 +477,10 @@ class Test_NodeExecutor_private_methods(unittest.TestCase):
             mock_stdout.write.assert_has_calls(STDOUT_CALLS)
 
     def test__burn_loop(self, mock_conn):
-        """Check that the throttle is managed until the burn is complete, with staging."""
+        """
+        Check that the throttle is managed until the burn is complete,
+        with staging.
+        """
         def _false_once_then_true():
             yield False
             while True:
@@ -438,22 +492,24 @@ class Test_NodeExecutor_private_methods(unittest.TestCase):
         mock_conn().space_center.active_vessel.auto_pilot.error = 0
         mock_conn().stream().__enter__().return_value = dV_left
         with patch.object(NodeExecutor, '_is_burn_complete',
-                                        side_effect=_false_once_then_true(),):
-            with patch.object(NodeExecutor, '_throttle_manager'):
-                with patch.object(NodeExecutor, '_auto_stage'):
-                    with patch.object(NodeExecutor, '_wait_to_go_around_again'):
-                        Hal9000._burn_loop()
-                        Hal9000._wait_to_go_around_again.assert_called_once_with()
-                    Hal9000._auto_stage.assert_called_once_with(Hal9000.thrust)
-                Hal9000._throttle_manager.assert_called_once_with(dV_left)
-            Hal9000._is_burn_complete.assert_has_calls([call(dV_left), call(dV_left)])
+                          side_effect=_false_once_then_true(),), \
+                patch.object(NodeExecutor, '_throttle_manager'), \
+                patch.object(NodeExecutor, '_auto_stage'), \
+                patch.object(NodeExecutor, '_wait_to_go_around_again'):
+            Hal9000._burn_loop()
+            Hal9000._wait_to_go_around_again.assert_called_once_with()
+            Hal9000._auto_stage.assert_called_once_with(Hal9000.thrust)
+            Hal9000._throttle_manager.assert_called_once_with(dV_left)
+            Hal9000._is_burn_complete.assert_has_calls(
+                [call(dV_left), call(dV_left)])
 
     def test__print_burn_error(self, mock_conn):
         """Check that the remaining deltaV is printed to stdout."""
         mock_conn().configure_mock(**self.CONN_ATTRS)
         Hal9000 = NodeExecutor()
         dV_left = 0.1
-        STDOUT_CALLS = [call(f'{(dV_left/Hal9000.delta_v):2.2f}% of original dV left.')]
+        STDOUT_CALLS = [
+            call(f'{(dV_left/Hal9000.delta_v):2.2f}% of original dV left.')]
         with patch('sys.stdout', spec=True) as mock_stdout:
             Hal9000._print_burn_error(dV_left)
             mock_stdout.write.assert_has_calls(STDOUT_CALLS)
