@@ -1,4 +1,8 @@
-"""Unit test the Launch class."""
+"""
+Unit test the Launch class.
+
+Full coverage achieved, refactoring for readability & efficiency ongoing.
+"""
 
 import unittest
 from unittest.mock import patch, call
@@ -169,6 +173,55 @@ class Test_Launcher_public_methods(unittest.TestCase):
             vessel.auto_pilot.engage.assert_called_once_with()
             vessel.control.activate_next_stage.assert_called_once_with()
             mock_time.sleep.assert_called_once_with(1)
+
+    def test_ascent(self, mock_conn):
+        """Should manage the ascent until apoapsis is reached."""
+        def _80_once_then_100():
+            yield 50
+            while True:
+                yield 100
+
+        capcom = Launcher(target_altitude=80)
+        mock_conn().stream().__enter__().side_effect = _80_once_then_100()
+        vessel = mock_conn().space_center.active_vessel
+        vessel.control.throttle = 1.0
+        vessel.available_thrust = 20
+
+        with patch.object(Launcher, '_ascent_angle_manager'), \
+                patch.object(Launcher, '_auto_stage'), \
+                patch.object(Launcher, '_wait_to_go_around_again'):
+            capcom.ascent()
+            capcom._ascent_angle_manager.assert_called_once_with(100)
+            capcom._auto_stage.assert_called_once_with(20)
+            capcom._wait_to_go_around_again.assert_called_once_with()
+            self.assertAlmostEqual(vessel.control.throttle, 0.0)
+
+    def test_setup_circularization(self, mock_conn):
+        """Should add the circularization maneuver node."""
+        vessel = mock_conn().space_center.active_vessel
+        vessel.orbit.body.gravitational_parameter = 1
+        vessel.orbit.apoapsis = 200
+        vessel.orbit.semi_major_axis = 100
+        mock_conn().space_center.ut = 10
+        vessel.orbit.time_to_apoapsis = 20
+        capcom = Launcher(target_altitude=200)
+        capcom.setup_circularization()
+        vessel.control.add_node.assert_called_once()
+        args, kargs = vessel.control.add_node.call_args
+        self.assertEqual(args, (30,))
+        self.assertAlmostEqual(kargs['prograde'], 0.0707, 4)
+
+    def test_execute_launch(self, mock_conn):
+        """Should run ignition, ascent and setup_circularization."""
+        capcom = Launcher(target_altitude=10)
+        with patch.object(Launcher, 'ignition'), \
+                patch.object(Launcher, 'ascent'), \
+                patch.object(Launcher, 'setup_circularization'):
+            capcom.execute_launch()
+            capcom.ignition.assert_called_once_with()
+            capcom.ascent.assert_called_once_with()
+            capcom.setup_circularization.assert_called_once_with()
+
 
 if __name__ == '__main__':
     unittest.main()
